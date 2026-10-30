@@ -15,8 +15,10 @@ import hashlib
 import html
 import json
 import re
+import os
 import shutil
 import sys
+import urllib.request
 from datetime import date
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse, urlsplit, urlunsplit
@@ -24,11 +26,11 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlsplit, urlunsplit
 LIBRARY = Path(__file__).resolve().parent.parent
 ASSETS = LIBRARY / "assets"
 
-# Boréale's sites' languages, the consoles': the catalog's code
+# Boréale's sites' languages, the consoles' and the apps': the catalog's code
 # (i18n/<code>.json), the site's folder ('' for the root, the first one), the
 # name in its own words, the html lang.
 LANGUAGES = [
-    ("en", "", "English", "en"),
+    ("en-US", "", "English", "en"),
     ("fr", "fr", "Français", "fr"),
     ("fr-CA", "fr-ca", "Français (Canada)", "fr-CA"),
     ("de", "de", "Deutsch", "de"),
@@ -48,10 +50,10 @@ CODES = [code for code, _, _, _ in LANGUAGES]
 # Each language's flag in the language menu (fonts/twemoji-flags.woff2 draws
 # them the same everywhere, Windows included): the country of the console's
 # language, Mexico for Latin America's Spanish, Taiwan for Traditional Chinese.
-FLAGS = {"en": "US", "fr": "FR", "fr-CA": "CA", "de": "DE", "es": "ES", "es-419": "MX", "it": "IT", "nl": "NL",
+FLAGS = {"en-US": "US", "fr": "FR", "fr-CA": "CA", "de": "DE", "es": "ES", "es-419": "MX", "it": "IT", "nl": "NL",
          "pt": "PT", "pt-BR": "BR", "ru": "RU", "ja": "JP", "ko": "KR", "zh-Hans": "CN", "zh-Hant": "TW"}
 # Open Graph's name of each language.
-OG_LOCALES = {"en": "en_US", "fr": "fr_FR", "fr-CA": "fr_CA", "de": "de_DE", "es": "es_ES", "es-419": "es_LA",
+OG_LOCALES = {"en-US": "en_US", "fr": "fr_FR", "fr-CA": "fr_CA", "de": "de_DE", "es": "es_ES", "es-419": "es_LA",
               "it": "it_IT", "nl": "nl_NL", "pt": "pt_PT", "pt-BR": "pt_BR", "ru": "ru_RU", "ja": "ja_JP",
               "ko": "ko_KR", "zh-Hans": "zh_CN", "zh-Hant": "zh_TW"}
 
@@ -62,7 +64,7 @@ _FR = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept
 _ES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic"]
 _PT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 MONTHS = {
-    "en": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+    "en-US": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
     "fr": _FR, "fr-CA": _FR,
     "de": ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."],
     "es": _ES, "es-419": _ES,
@@ -71,7 +73,7 @@ MONTHS = {
     "pt": _PT, "pt-BR": _PT,
     "ru": ["янв.", "февр.", "мар.", "апр.", "мая", "июн.", "июл.", "авг.", "сент.", "окт.", "нояб.", "дек."],
 }
-DATES = {"en": "{m} {d}, {y}", "de": "{d}. {m} {y}", "ja": "{y}年{n}月{d}日", "zh-Hans": "{y}年{n}月{d}日",
+DATES = {"en-US": "{m} {d}, {y}", "de": "{d}. {m} {y}", "ja": "{y}年{n}月{d}日", "zh-Hans": "{y}年{n}月{d}日",
          "zh-Hant": "{y}年{n}月{d}日", "ko": "{y}. {n}. {d}."}  # else "{d} {m} {y}"
 
 # The audience, counted by Umami Cloud (workbench's "Mesure d'audience"): its
@@ -83,6 +85,10 @@ UMAMI_GATEWAY = "https://gateway.umami.is"
 
 # sites.json's schema (README.md): one it does not know reads as no list.
 SITES_SCHEMA = 1
+# boreale.dev's versions.json, the projects' latest releases for the menu of
+# Boréale's sites: {"schema": 1, "projects": {project: "X.Y.Z"}}.
+VERSIONS_URL = "https://boreale.dev/versions.json"
+VERSIONS_SCHEMA = 1
 
 
 def folder(language: str) -> str:
@@ -150,21 +156,22 @@ def catalogs(own: Path) -> dict:
 
 def check_catalogs(own: Path, optional: dict = None) -> list:
     """What is wrong with a site's catalogs (`own`) and the common ones: each
-    with en.json's keys, none empty, the same {placeholders} and <em> as
+    with en-US.json's keys, none empty, the same {placeholders} and <em> as
     English's, no common key in a site's. `optional` gives, by language, the
     keys it may leave out (fr.json's legal_translation on boreale.dev)."""
     optional = optional or {}
+    first = CODES[0]
     errors = []
     for where, folder_ in (("boreale-site/i18n", LIBRARY / "i18n"), (f"{own.name}", own)):
         found = {p.stem: json.loads(p.read_text(encoding="utf-8")) for p in sorted(folder_.glob("*.json"))}
         if sorted(found) != sorted(CODES):
             errors.append(f"{where}: catalogs {sorted(found)}, not the fifteen languages'")
-        english = found.get("en", {})
+        english = found.get(first, {})
         for code, catalog in found.items():
             for key in sorted(set(english) - set(catalog) - set(optional.get(code, ()))):
                 errors.append(f"{where}/{code}.json: no {key}")
             for key in sorted(set(catalog) - set(english)):
-                errors.append(f"{where}/{code}.json: {key} is not in en.json")
+                errors.append(f"{where}/{code}.json: {key} is not in {first}.json")
             for key, text in catalog.items():
                 if not str(text).strip():
                     errors.append(f"{where}/{code}.json: {key} is empty")
@@ -199,6 +206,30 @@ def read_sites(path: Path = LIBRARY / "sites.json") -> list:
                  for s in group.get("sites", [])]
         groups.append((group.get("title"), sites))
     return groups
+
+
+def read_versions(document) -> dict:
+    """The {project: version} of versions.json's `document`; a document of
+    another schema or shape reads as none, never an error."""
+    if not isinstance(document, dict) or document.get("schema") != VERSIONS_SCHEMA:
+        return {}
+    projects = document.get("projects")
+    if not isinstance(projects, dict):
+        return {}
+    return {k: v for k, v in projects.items() if isinstance(k, str) and isinstance(v, str)}
+
+
+def latest_versions(timeout: float = 10) -> dict:
+    """The projects' latest releases as boreale.dev publishes them, for the
+    menu of Boréale's sites; none offline (SITE_OFFLINE=1) or when they
+    cannot be read, and the menu shows no versions."""
+    if os.environ.get("SITE_OFFLINE") == "1":
+        return {}
+    try:
+        with urllib.request.urlopen(VERSIONS_URL, timeout=timeout) as answer:
+            return read_versions(json.load(answer))
+    except (OSError, ValueError):
+        return {}
 
 
 def ours(url: str) -> bool:
@@ -284,6 +315,17 @@ class Site:
         tagged = urlunsplit(u._replace(query=urlencode(query)))
         return url if tagged == html.unescape(url) else html.escape(tagged, quote=True)
 
+    def untagged(self, text: str) -> str:
+        """Markdown or text the site serves (a documentation page, llms.txt)
+        with its links to the site itself free of the UTM tags it was written
+        with for GitHub."""
+        def one(m):
+            u = urlsplit(m.group(0))
+            query = parse_qsl(u.query, keep_blank_values=True)
+            kept = [(k, v) for k, v in query if not k.startswith("utm_")]
+            return urlunsplit(u._replace(query=urlencode(kept))) if len(kept) != len(query) else m.group(0)
+        return re.sub(r"https://" + re.escape(self.host) + r"/[^\s)<>\]\"']*", one, text)
+
     @staticmethod
     def link_out(tag: str, url: str) -> str:
         """An <a> tag by the rule "liens sortants anonymes": rel="noreferrer"
@@ -324,12 +366,18 @@ class Site:
 
     # -- The header's menus.
 
-    def switcher(self, language: str, catalog: dict, root: str, latest: dict = None) -> str:
+    def switcher(self, language: str, catalog: dict, root: str, latest: dict = None, brand: str = None,
+                 home: str = None) -> str:
         """The header's name, a button that opens the menu of Boréale's sites
         (boreale.css's and boreale.js's "site switcher"), this one marked and
-        leading home, each with its latest release when `latest` has it. A
-        popover: the browser closes it on Esc or a click elsewhere."""
+        leading home (`home`, else the language's home page), each with its
+        latest release when `latest` has it. `brand`: the button's content
+        before its chevron, else the site's mark and name. A popover: the
+        browser closes it on Esc or a click elsewhere."""
         latest = latest or {}
+        home = home if home is not None else f"{root}{folder(language)}"
+        brand = brand if brand is not None else (
+            f'<img src="{root}assets/marks/{self.key}.svg" alt="" width="34" height="34">{self.name}')
         label = catalog["sites_label"]
         groups = []
         for title, sites in self.groups:
@@ -337,7 +385,7 @@ class Site:
             for s in sites:
                 key = s["key"]
                 here = key == self.key
-                href = f"{root}{folder(language)}" if here else s["url"] + folder(language)
+                href = home if here else s["url"] + folder(language)
                 soon = f'<em class="soon">{catalog["sites_soon"]}</em>' if s["soon"] else ""
                 version = f' <span class="sites-version">{html.escape(latest[key])}</span>' if key in latest else ""
                 current = ' aria-current="true"' if here else ""
@@ -349,7 +397,7 @@ class Site:
             groups.append(f'        {heading}<ul>\n          ' + "\n          ".join(items) + '\n        </ul>')
         return (f'<div class="switcher">\n'
                 f'      <button class="brand switch" type="button" popovertarget="sites" aria-label="{self.name} · {label}">'
-                f'<img src="{root}assets/marks/{self.key}.svg" alt="" width="34" height="34">{self.name}{CHEVRON}</button>\n'
+                f'{brand}{CHEVRON}</button>\n'
                 f'      <div id="sites" class="sites" popover aria-label="{label}">\n'
                 + "\n".join(groups) + '\n      </div>\n    </div>')
 

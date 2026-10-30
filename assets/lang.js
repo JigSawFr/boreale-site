@@ -2,7 +2,8 @@
 // own origin, so its own memory). The language at a first visit: the
 // English home page (the root, marked data-first-visit) sends a visitor
 // whose browser prefers one of the site's other languages to its folder
-// (/fr/, /de/, /zh-hant/...), unless a language was chosen before. Choosing
+// (/fr/, /de/, /zh-hant/...), unless a language was chosen before or the
+// visitor came from the site itself. Choosing
 // one in the header's menu keeps it. The page not found (404.html, marked
 // data-lost) follows the same choice. Loaded in <head>, before the page is
 // drawn, so the move shows nothing.
@@ -32,7 +33,10 @@
     }
     return null;
   };
-  if (root.hasAttribute("data-first-visit") && !chosen) {
+  // Not when the visitor came from the site itself: a click on English, or
+  // on the name, leads to the English home page, and stays there.
+  const inside = document.referrer && new URL(document.referrer, location.href).origin === location.origin;
+  if (root.hasAttribute("data-first-visit") && !chosen && !inside) {
     const wanted = browser();
     if (wanted && wanted !== SITE[0]) {
       location.replace(`${wanted}/${location.hash}`);

@@ -3,10 +3,12 @@
     python3 -m unittest discover -s tests
 """
 import json
+import os
 import sys
 import tempfile
 import unittest
 from datetime import date
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -45,6 +47,13 @@ class Links(unittest.TestCase):
                       'referrerpolicy="strict-origin"', out)
         self.assertIn('href="https://example.org/" rel="external noreferrer"', out)
         self.assertIn('href="https://github.com/JigSawFr" referrerpolicy="strict-origin"', out)
+
+    def test_untagged(self):
+        site = boreale.Site("playguard")
+        text = ("[docs](https://guard.boreale.dev/fr/docs/?utm_source=github&utm_medium=readme) "
+                "[home](https://boreale.dev/?utm_source=github&utm_medium=readme) https://guard.boreale.dev/")
+        self.assertEqual(site.untagged(text), "[docs](https://guard.boreale.dev/fr/docs/) "
+                         "[home](https://boreale.dev/?utm_source=github&utm_medium=readme) https://guard.boreale.dev/")
 
     def test_site_url(self):
         site = boreale.Site("atlas", "https://jigsawfr.github.io/Atlas")
@@ -88,15 +97,38 @@ class Sites(unittest.TestCase):
         self.assertIn('assets/marks/atlas.svg" alt="" width="34"', html)
         self.assertIn(catalog["sites_open"], html)
 
+    def test_switcher_brand_and_home(self):
+        catalog = boreale.common_catalogs()["en-US"]
+        html = boreale.Site("playguard").switcher("en-US", catalog, "../", brand="<span>Play<b>Guard</b></span>",
+                                                  home="../index.html")
+        self.assertIn('popovertarget="sites" aria-label="PlayGuard · ', html)
+        self.assertIn('"><span>Play<b>Guard</b></span><svg class="chevron"', html)
+        self.assertIn('href="../index.html" aria-current="true"', html)
+
+
+class Versions(unittest.TestCase):
+    def test_schema_1(self):
+        self.assertEqual(boreale.read_versions({"schema": 1, "projects": {"playguard": "1.4.0", "x": 2}, "new": 1}),
+                         {"playguard": "1.4.0"})
+
+    def test_other_shapes(self):
+        for document in (None, [], {"playguard": "1.4.0"}, {"schema": 2, "projects": {"playguard": "9.0.0"}},
+                         {"schema": "1", "projects": {}}, {"schema": 1, "projects": []}):
+            self.assertEqual(boreale.read_versions(document), {}, document)
+
+    def test_offline(self):
+        with mock.patch.dict(os.environ, {"SITE_OFFLINE": "1"}):
+            self.assertEqual(boreale.latest_versions(), {})
+
 
 class Text(unittest.TestCase):
     def test_day(self):
-        self.assertEqual(boreale.day(date(2026, 10, 30), "en"), "Oct 30, 2026")
+        self.assertEqual(boreale.day(date(2026, 10, 30), "en-US"), "Oct 30, 2026")
         self.assertEqual(boreale.day(date(2026, 10, 30), "fr"), "30 oct. 2026")
         self.assertEqual(boreale.day(date(2026, 10, 30), "ja"), "2026年10月30日")
 
     def test_folder(self):
-        self.assertEqual(boreale.folder("en"), "")
+        self.assertEqual(boreale.folder("en-US"), "")
         self.assertEqual(boreale.folder("zh-Hant"), "zh-hant/")
 
     def test_languages_menu(self):
