@@ -1,0 +1,22 @@
+name: ci
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: The library's tests
+        run: python3 -m unittest discover -s tests -v
+      - name: The scripts parse
+        run: for f in assets/*.js; do node --check "$f"; done
+      - name: The layout check parses
+        run: python3 -m py_compile tools/site_layout.py
