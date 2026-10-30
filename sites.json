@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "groups": [
+    {"title": null, "sites": [
+      {"key": "boreale", "name": "Boréale", "url": "https://boreale.dev/", "utm": "boreale"}
+    ]},
+    {"title": "sites_homebrew", "sites": [
+      {"key": "playguard", "name": "PlayGuard", "url": "https://guard.boreale.dev/", "utm": "guard"},
+      {"key": "playshelf", "name": "PlayShelf", "url": "https://shelf.boreale.dev/", "utm": "shelf", "soon": true}
+    ]},
+    {"title": "sites_libraries", "sites": [
+      {"key": "aurore", "name": "Aurore", "url": "https://aurore.boreale.dev/", "utm": "aurore"}
+    ]},
+    {"title": "sites_open", "sites": [
+      {"key": "atlas", "name": "Atlas", "url": "https://atlas.boreale.dev/", "utm": "atlas"},
+      {"key": "lantern", "name": "Lantern", "url": "https://lantern.boreale.dev/", "utm": "lantern"}
+    ]}
+  ]
+}
