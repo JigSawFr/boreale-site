@@ -55,6 +55,17 @@ class Links(unittest.TestCase):
         self.assertEqual(site.untagged(text), "[docs](https://guard.boreale.dev/fr/docs/) "
                          "[home](https://boreale.dev/?utm_source=github&utm_medium=readme) https://guard.boreale.dev/")
 
+    def test_audience(self):
+        site = boreale.Site("aurore")
+        self.assertEqual(site.audience("../"), '<script src="../assets/umami.js" defer data-website-id="'
+                         f'{boreale.UMAMI_WEBSITE}" data-domains="aurore.boreale.dev"></script>')
+        self.assertIn('data-domains="aurore.boreale.dev" data-before-send="auroreAudience"></script>',
+                      site.audience("../", before_send="auroreAudience"))
+        self.assertIn('data-tag="a&quot;b"', site.audience("", tag='a"b'))
+        for key in ("website_id", "domains"):
+            with self.assertRaises(ValueError):
+                site.audience("", **{key: "x"})
+
     def test_site_url(self):
         site = boreale.Site("atlas", "https://jigsawfr.github.io/Atlas")
         self.assertEqual(site.address("fr", "explore/"), "https://jigsawfr.github.io/Atlas/fr/explore/")

@@ -362,10 +362,16 @@ class Site:
 
         return LINK_OUT.sub(one, text)
 
-    def audience(self, root: str) -> str:
-        """Umami's tracker, counting only from this site's own host."""
+    def audience(self, root: str, **data) -> str:
+        """Umami's tracker, counting only from this site's own host. `data`:
+        its other settings, each a data- attribute (before_send="name" for
+        data-before-send, a function of the page that filters what is sent);
+        the site and its host are not among them."""
+        if {"website_id", "domains"} & set(data):
+            raise ValueError("audience: the website and its host are boreale-site's")
+        extra = "".join(f' data-{key.replace("_", "-")}="{attribute(str(value))}"' for key, value in data.items())
         return (f'<script src="{root}assets/umami.js" defer data-website-id="{UMAMI_WEBSITE}" '
-                f'data-domains="{self.host}"></script>')
+                f'data-domains="{self.host}"{extra}></script>')
 
     # -- The header's menus.
 
