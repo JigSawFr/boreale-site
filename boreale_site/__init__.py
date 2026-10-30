@@ -158,7 +158,9 @@ def check_catalogs(own: Path, optional: dict = None) -> list:
     """What is wrong with a site's catalogs (`own`) and the common ones: each
     with en-US.json's keys, none empty, the same {placeholders} and <em> as
     English's, no common key in a site's. `optional` gives, by language, the
-    keys it may leave out (fr.json's legal_translation on boreale.dev)."""
+    keys it may leave out or empty (fr.json's legal_translation on
+    boreale.dev; en-US.json's note that a page is in English on Aurore, shown
+    in the other languages alone)."""
     optional = optional or {}
     first = CODES[0]
     errors = []
@@ -174,8 +176,9 @@ def check_catalogs(own: Path, optional: dict = None) -> list:
                 errors.append(f"{where}/{code}.json: {key} is not in {first}.json")
             for key, text in catalog.items():
                 if not str(text).strip():
-                    errors.append(f"{where}/{code}.json: {key} is empty")
-                elif key in english:
+                    if key not in optional.get(code, ()):
+                        errors.append(f"{where}/{code}.json: {key} is empty")
+                elif key in english and str(english[key]).strip():
                     if sorted(re.findall(r"\{[a-z_]+\}", english[key])) != sorted(re.findall(r"\{[a-z_]+\}", text)):
                         errors.append(f"{where}/{code}.json: {key}'s placeholders differ from English's")
                     if ("<em>" in english[key]) != ("<em>" in text):

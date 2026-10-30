@@ -149,6 +149,21 @@ class Text(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 boreale.catalogs(own)
 
+    def test_optional_empty(self):
+        # Aurore's English note that a page is in English: empty on purpose,
+        # shown in the other languages alone.
+        with tempfile.TemporaryDirectory() as d:
+            own = Path(d) / "i18n"
+            own.mkdir()
+            for code in boreale.CODES:
+                text = "" if code == "en-US" else "In English"
+                (own / f"{code}.json").write_text(json.dumps({"title": "x", "doc_untranslated": text}), encoding="utf-8")
+            self.assertEqual(boreale.check_catalogs(own), ["i18n/en-US.json: doc_untranslated is empty"])
+            self.assertEqual(boreale.check_catalogs(own, optional={"en-US": {"doc_untranslated"}}), [])
+            (own / "de.json").write_text('{"title": "x"}', encoding="utf-8")
+            self.assertEqual(boreale.check_catalogs(own, optional={"en-US": {"doc_untranslated"}}),
+                             ["i18n/de.json: no doc_untranslated"])
+
 
 PAGE = """<!doctype html><html><head><meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src {connect}; base-uri 'none'">
@@ -181,6 +196,90 @@ class Checks(unittest.TestCase):
 
     def test_reserved_address(self):
         self.assertEqual(self.errors("<p>someone@example.org</p>"), [])
+
+    def test_event_handler(self):
+        found = self.errors('<button onclick="go()">x</button>')
+        self.assertEqual(found, ["index.html: onclick attribute on <button> (the Content-Security-Policy blocks it)"])
+
+    def test_poster(self):
+        self.assertEqual(self.errors('<video poster="nowhere.png"></video>'), ["index.html: nowhere.png leads nowhere"])
+
+
+REDIRECT = """<!doctype html><html><head>{referrer}
+<meta http-equiv="refresh" content="0; url=../getting-started/"></head><body></body></html>"""
+
+
+class Site(unittest.TestCase):
+    """check.pages() on a site of several files: {path: body or whole page}."""
+
+    def errors(self, files, site=None, **options):
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d)
+            (out / "assets").mkdir()
+            (out / "assets" / "umami.js").write_text("", encoding="utf-8")
+            for path, text in files.items():
+                (out / path).parent.mkdir(parents=True, exist_ok=True)
+                page = text if text.startswith("<!doctype") else PAGE.format(
+                    body=text, connect="'self' https://gateway.umami.is")
+                root = "../" * path.count("/")
+                (out / path).write_text(page.replace('src="assets/', f'src="{root}assets/'), encoding="utf-8")
+            return check.pages(out, site or boreale.Site("atlas"), **options)[0]
+
+    def test_anchor_in_another_page(self):
+        files = {"index.html": '<a href="docs/#setup">s</a><a href="docs/#nothing">n</a>',
+                 "docs/index.html": '<h2 id="setup">Setup</h2><a href="../#main">home</a>'}
+        self.assertEqual(self.errors(files), ["index.html: docs/#nothing: #nothing is not on docs/index.html"])
+
+    def test_view_of_a_script(self):
+        # A #fragment holding a "/" is a view (Atlas's explorer), not an id.
+        self.assertEqual(self.errors({"index.html": '<a href="explore/#steam/popular">e</a>',
+                                      "explore/index.html": ""}), [])
+
+    def test_own_address(self):
+        site = boreale.Site("atlas", "https://jigsawfr.github.io/Atlas/")
+        files = {"index.html": '<link rel="canonical" href="https://jigsawfr.github.io/Atlas/">'
+                               '<link rel="alternate" hreflang="fr" href="https://jigsawfr.github.io/Atlas/fr/">'
+                               '<a href="https://jigsawfr.github.io/Atlas/docs/#setup" rel="noreferrer">d</a>',
+                 "fr/index.html": "", "docs/index.html": ""}
+        self.assertEqual(self.errors(files, site), [
+            "index.html: https://jigsawfr.github.io/Atlas/docs/#setup: #setup is not on docs/index.html"])
+        del files["fr/index.html"]
+        self.assertIn("index.html: https://jigsawfr.github.io/Atlas/fr/ leads nowhere", self.errors(files, site))
+
+    def test_apart(self):
+        files = {"index.html": '<a href="simulator/">s</a><a href="simulator/x.html#y">x</a>',
+                 "simulator/index.html": "<!doctype html><html><body>built apart, no policy</body></html>"}
+        found = self.errors(files)
+        self.assertTrue(any("simulator/index.html: no Content-Security-Policy" in e for e in found), found)
+        self.assertEqual(self.errors(files, apart=("simulator",)), [])
+        del files["simulator/index.html"]
+        self.assertEqual(self.errors(files, apart=("simulator",)), [])
+
+    def test_redirect(self):
+        # No script runs there: neither policy nor tracker, but no referrer.
+        files = {"index.html": '<a href="docs/">docs</a>', "docs/getting-started/index.html": "",
+                 "docs/index.html": REDIRECT.format(referrer='<meta name="referrer" content="no-referrer">')}
+        self.assertEqual(self.errors(files), [])
+        files["docs/index.html"] = REDIRECT.format(referrer="")
+        self.assertEqual(self.errors(files), ['docs/index.html: no <meta name="referrer" content="no-referrer">'])
+
+    def test_preview(self):
+        files = {"index.html": PAGE.format(body="", connect="'self' https://gateway.umami.is")
+                 .replace('<script src="assets/umami.js" defer></script>', "")}
+        self.assertEqual(self.errors(files), ["index.html: no Umami tracker (assets/umami.js)"])
+        self.assertEqual(self.errors(files, tracker=False), [])
+
+    def test_lost_base(self):
+        # 404.html, served at any address: its links start from SITE_BASE.
+        files = {"404.html": '<a href="/PlayGuard/pr-9/">home</a><a href="/PlayGuard/pr-9/fr/">fr</a>',
+                 "index.html": "", "fr/index.html": ""}
+        site = boreale.Site("playguard", "https://jigsawfr.github.io/PlayGuard/pr-9/")
+        self.assertEqual(self.errors(files, site), [])
+        self.assertEqual(self.errors(files, site, base="/PlayGuard/pr-9/"), [])
+        site = boreale.Site("playguard")
+        self.assertEqual(self.errors(files, site, base="/PlayGuard/pr-9"), [])
+        self.assertEqual(self.errors(files, site), ["404.html: /PlayGuard/pr-9/ leads nowhere",
+                                                    "404.html: /PlayGuard/pr-9/fr/ leads nowhere"])
 
 
 if __name__ == "__main__":

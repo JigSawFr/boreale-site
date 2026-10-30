@@ -4,24 +4,32 @@ tools/check_site.py:
     errors = boreale_check.pages(Path("build"), site)
 
 - no {{key}} left in a page;
-- every link and image to the site leads to a file, and every #anchor to an id;
+- every link and image to the site leads to a file, its absolute links to
+  its own address included, and every #anchor to an id of the page it names
+  (a #fragment holding a "/" is a view of a page's script, not an id); the
+  folders built apart (`apart`: a simulator, a demo) are neither walked nor
+  followed;
 - links out by the rule "liens sortants anonymes": every page sends no
   referrer, a link to a third party has rel="noreferrer", one to
   *.boreale.dev or github.com/JigSawFr has referrerpolicy="strict-origin";
   one to another of our sites has the site's utm_source and a utm_medium, no
   other link has utm_ parameters;
 - nothing the Content-Security-Policy blocks: no inline script (but data, by
-  its type), no <style>, no style="" attribute, nothing loaded from another
-  site; the policy's connect-src is the site's own and Umami's alone, whose
-  tracker (assets/umami.js) every page carries;
+  its type), no <style>, no style="" or on*="" (event handler) attribute,
+  nothing loaded from another site; the policy's connect-src is the site's
+  own and Umami's alone, whose tracker (assets/umami.js) every page carries
+  (not a preview's, `tracker=False`); a page that only sends its visitor on
+  (<meta http-equiv="refresh">) runs nothing and needs neither, but sends no
+  referrer either;
 - no real e-mail address: contact goes through the repositories' issues;
 - the data in pages (JSON, by type) reads.
 """
 import json
+import os
 import re
 from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import parse_qsl, urlparse
+from urllib.parse import parse_qsl, unquote, urlparse
 
 from . import UMAMI_GATEWAY, Site, ours, own_site
 
@@ -76,6 +84,7 @@ class Page(HTMLParser):
         self.ids, self.links, self.problems, self.data = set(), [], [], []
         self.in_data = False
         self.no_referrer = False
+        self.redirect = False
         self.policy = None
         self.tracker = False
 
@@ -85,6 +94,8 @@ class Page(HTMLParser):
             self.no_referrer = True
         if tag == "meta" and (a.get("http-equiv") or "").lower() == "content-security-policy":
             self.policy = a.get("content") or ""
+        if tag == "meta" and (a.get("http-equiv") or "").lower() == "refresh":
+            self.redirect = True
         if tag == "a":
             problem = link_problem(a, self.site)
             if problem:
@@ -93,6 +104,8 @@ class Page(HTMLParser):
             self.ids.add(a["id"])
         if "style" in a:
             self.problems.append(f"style attribute on <{tag}>")
+        self.problems += [f"{k} attribute on <{tag}> (the Content-Security-Policy blocks it)"
+                          for k in a if k.startswith("on")]
         if tag == "style":
             self.problems.append("<style> element")
         if tag == "script":
@@ -104,7 +117,7 @@ class Page(HTMLParser):
                 self.problems.append("inline <script>")
             elif (a.get("src") or "").endswith("assets/umami.js"):
                 self.tracker = True
-        for name in ("href", "src"):
+        for name in ("href", "src", "poster"):
             if name in a:
                 self.links.append((name, a[name]))
 
@@ -117,30 +130,53 @@ class Page(HTMLParser):
             self.in_data = False
 
 
-def pages(out: Path, site: Site, skip: tuple = ("assets",)) -> tuple:
+def pages(out: Path, site: Site, skip: tuple = ("assets",), apart: tuple = (), tracker: bool = True,
+          base: str = None) -> tuple:
     """Every page of the built site `out` checked: (errors, how many pages).
-    `skip`: folders not walked (assets, a site's data)."""
+    `skip`: folders not walked (assets, a site's data), wherever they are.
+    `apart`: folders of the site's root built apart (simulator, demo): not
+    walked, and a link into one is not followed. `tracker`: False for a
+    preview, counted by no one (SITE_NOINDEX=1). `base`: the path the root's
+    404.html is served under, wherever the address not found is (a site's
+    SITE_BASE, /PlayGuard/): its links start from there; the site's own
+    address' path by default."""
     errors = []
+    apart = [Path(a).parts for a in apart]
+
+    def built_apart(parts) -> bool:
+        return any(tuple(parts[:len(a)]) == a for a in apart)
+
     found = [p for p in sorted(out.rglob("*.html"))
-             if not set(p.relative_to(out).parts[:-1]) & set(skip)]
+             if not set(p.relative_to(out).parts[:-1]) & set(skip) and not built_apart(p.relative_to(out).parts)]
     if not found:
         errors.append(f"no page in {out}")
+    read = {}
+
+    def parse(path: Path) -> Page:
+        if path not in read:
+            read[path] = Page(site)
+            read[path].feed(path.read_text(encoding="utf-8"))
+        return read[path]
+
+    own = urlparse(site.url).path
+    lost = base.rstrip("/") + "/" if base else own
+    root = out.resolve()
     for path in found:
         name = path.relative_to(out).as_posix()
         text = path.read_text(encoding="utf-8")
         if "{{" in text:
             errors.append(f"{name}: a {{{{key}}}} is left")
         errors += [f"{name}: an e-mail address ({e}), contact goes through GitHub" for e in emails(text)]
-        parsed = Page(site)
-        parsed.feed(text)
+        parsed = parse(path)
         errors += [f"{name}: {p}" for p in parsed.problems]
         if not parsed.no_referrer:
             errors.append(f'{name}: no <meta name="referrer" content="no-referrer">')
         if parsed.policy is None:
-            errors.append(f"{name}: no Content-Security-Policy")
+            if not parsed.redirect:
+                errors.append(f"{name}: no Content-Security-Policy")
         elif policy_problem(parsed.policy):
             errors.append(f"{name}: {policy_problem(parsed.policy)}")
-        if not parsed.tracker:
+        if tracker and not parsed.tracker and not parsed.redirect:
             errors.append(f"{name}: no Umami tracker (assets/umami.js)")
         for data in parsed.data:
             try:
@@ -149,21 +185,41 @@ def pages(out: Path, site: Site, skip: tuple = ("assets",)) -> tuple:
                 errors.append(f"{name}: its data is not JSON ({error})")
         for attr, link in parsed.links:
             url = urlparse(link)
-            if url.scheme in ("http", "https", "mailto", "data"):
+            if url.scheme in ("http", "https") and attr != "src" and link.startswith(site.url):
+                # The site's own address (its canonical page, its languages):
+                # the file it names.
+                url = urlparse(link[len(site.url):])
+                target = root / unquote(url.path)
+            elif url.scheme in ("http", "https", "mailto", "data"):
                 if attr == "src" and url.scheme != "data":
                     errors.append(f"{name}: loads {link} from another site")
                 continue
-            if url.scheme:
+            elif url.scheme or link.startswith("//"):
                 continue
-            if path.name == "404.html" and url.path.startswith("/"):
-                target = out / url.path.lstrip("/").removeprefix(urlparse(site.url).path.lstrip("/"))
+            elif url.path.startswith("/"):
+                # From the site's root: its address' path, or where the
+                # root's 404.html is served (`base`).
+                prefix = lost if name == "404.html" else own
+                if not url.path.startswith(prefix):
+                    errors.append(f"{name}: {link} leads nowhere (not under {prefix})")
+                    continue
+                target = root / unquote(url.path[len(prefix):])
             else:
-                target = (path.parent / url.path).resolve() if url.path else path
+                target = path.resolve().parent / unquote(url.path) if url.path else path.resolve()
+            target = Path(os.path.normpath(target))
+            if target.is_relative_to(root) and built_apart(target.relative_to(root).parts):
+                continue
             if target.is_dir():
                 target = target / "index.html"
             if not target.exists():
                 errors.append(f"{name}: {link} leads nowhere")
                 continue
-            if url.fragment and target == path and url.fragment not in parsed.ids:
-                errors.append(f"{name}: #{url.fragment} is not on the page")
+            fragment = unquote(url.fragment)
+            if not fragment or "/" in fragment or target.suffix != ".html":
+                continue
+            if target == path.resolve():
+                if fragment not in parsed.ids:
+                    errors.append(f"{name}: #{fragment} is not on the page")
+            elif fragment not in parse(target).ids:
+                errors.append(f"{name}: {link}: #{fragment} is not on {target.relative_to(root).as_posix()}")
     return errors, len(found)
