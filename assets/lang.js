@@ -9,11 +9,18 @@
 (function () {
   const KEY = "boreale-lang";
   // The site's languages by their folder (boreale_site's LANGUAGES); the
-  // first, English, at the root.
-  const SITE = ["en", "fr", "fr-ca", "de", "es", "es-419", "it", "nl", "pt", "pt-br", "ru", "ja", "ko",
+  // first, English, at the root, by its code (the menu's data-lang).
+  const SITE = ["en-US", "fr", "fr-ca", "de", "es", "es-419", "it", "nl", "pt", "pt-br", "ru", "ja", "ko",
     "zh-hans", "zh-hant"];
   let chosen = null;
   try { chosen = localStorage.getItem(KEY); } catch (e) { /* storage refused: no memory */ }
+  // English chosen before its code was en-US ("en", boreale.dev's and
+  // Atlas's menus until boreale-site#2): kept as "en-US" once. To delete
+  // after 2027-01-31 (workbench plans/boreale/suivi.md).
+  if (chosen === "en") {
+    chosen = "en-US";
+    try { localStorage.setItem(KEY, chosen); } catch (e) { /* idem */ }
+  }
 
   const root = document.documentElement;
   // The browser's first language the site has (English stops the search):

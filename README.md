@@ -16,7 +16,7 @@ pages, texts, `site.css` and `site.js`.
 | `sites.json` | Boréale's sites, in the order and groups of the header's menu: `key`, `name`, `url`, `utm` (its `utm_source`), `soon`. `schema` 1; a reader treats another schema as no list and leaves unknown fields aside. |
 | `i18n/<language>.json` | The texts every site uses (the menu of Boréale's sites, the language button), in the fifteen languages. A site's catalog does not repeat them: the build stops if it does. |
 | `assets/` | Copied into each built site's `assets/`: the fonts (SIL Open Font License, the flags' CC-BY 4.0), each site's mark (`marks/`), Umami's tracker (`umami.js`), `lang.js`, `boreale.css` (the brand's colours and fonts, the language menu, the menu of Boréale's sites) and `boreale.js` (where the two menus open). A site that has one of them too stops the build. |
-| `boreale_site/` | Python's standard library only: the languages, flags and dates, `fill()`, the two menus, the links out and their UTM tags (`Site`), the common assets and catalogs; `boreale_site.check`, the checks every built site passes. |
+| `boreale_site/` | Python's standard library only: the languages (English as `en-US`, the consoles' and the apps' code), flags and dates, `fill()`, the two menus, the links out and their UTM tags (`Site`, `untagged()` for Markdown served as it is), the projects' latest versions from boreale.dev's `versions.json` (`latest_versions()`, `schema` 1), the common assets and catalogs; `boreale_site.check`, the checks every built site passes. |
 | `tools/site_layout.py` | Each page on phones, a tablet and a desktop (Playwright), and axe-core against WCAG 2.2 AA. |
 
 ## In a site
@@ -28,7 +28,8 @@ import boreale_site as boreale
 site = boreale.Site("atlas", os.environ.get("SITE_URL"))  # its entry in sites.json
 catalogs = boreale.catalogs(ROOT / "site" / "i18n")       # its texts and the common ones
 ...
-values["switcher"] = site.switcher(language, catalog, root)
+values["switcher"] = site.switcher(language, catalog, root, boreale.latest_versions())
+# or with the site's own wordmark and home: site.switcher(..., brand=..., home=...)
 values["languages"] = site.languages(language, catalog, root, path)
 values["audience"] = site.audience(root)
 page = site.links_out(boreale.fill(template, values))
