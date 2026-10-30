@@ -2,19 +2,25 @@
 // own origin, so its own memory). The language at a first visit: the
 // English home page (the root, marked data-first-visit) sends a visitor
 // whose browser prefers one of the site's other languages to its folder
-// (/fr/, /de/, /zh-hant/...), unless a language was chosen before or the
-// visitor came from the site itself. Choosing
+// (/fr/, /de/, /zh-hant/...), unless a language was chosen before. Choosing
 // one in the header's menu keeps it. The page not found (404.html, marked
 // data-lost) follows the same choice. Loaded in <head>, before the page is
 // drawn, so the move shows nothing.
 (function () {
   const KEY = "boreale-lang";
   // The site's languages by their folder (boreale_site's LANGUAGES); the
-  // first, English, at the root.
-  const SITE = ["en", "fr", "fr-ca", "de", "es", "es-419", "it", "nl", "pt", "pt-br", "ru", "ja", "ko",
+  // first, English, at the root, by its code (the menu's data-lang).
+  const SITE = ["en-US", "fr", "fr-ca", "de", "es", "es-419", "it", "nl", "pt", "pt-br", "ru", "ja", "ko",
     "zh-hans", "zh-hant"];
   let chosen = null;
   try { chosen = localStorage.getItem(KEY); } catch (e) { /* storage refused: no memory */ }
+  // English chosen before its code was en-US ("en", boreale.dev's and
+  // Atlas's menus until boreale-site#2): kept as "en-US" once. To delete
+  // after 2027-01-31 (workbench plans/boreale/suivi.md).
+  if (chosen === "en") {
+    chosen = "en-US";
+    try { localStorage.setItem(KEY, chosen); } catch (e) { /* idem */ }
+  }
 
   const root = document.documentElement;
   // The browser's first language the site has (English stops the search):
@@ -33,10 +39,7 @@
     }
     return null;
   };
-  // Not when the visitor came from the site itself: a click on English, or
-  // on the name, leads to the English home page, and stays there.
-  const inside = document.referrer && new URL(document.referrer, location.href).origin === location.origin;
-  if (root.hasAttribute("data-first-visit") && !chosen && !inside) {
+  if (root.hasAttribute("data-first-visit") && !chosen) {
     const wanted = browser();
     if (wanted && wanted !== SITE[0]) {
       location.replace(`${wanted}/${location.hash}`);
