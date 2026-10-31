@@ -1,4 +1,4 @@
-/* boreale-site (README.md), v4: the page chrome every Boréale site shares,
+/* boreale-site (README.md), v4.2: the page chrome every Boréale site shares,
    loaded after boreale.css and before the site's own site.css, which keeps
    its content (hero, mock visuals, documentation) and nothing of this.
    PlayGuard's look is the reference: the header (72px, one row from 1081px,
@@ -43,7 +43,13 @@ html { background: var(--abyss); scroll-behavior: smooth; scroll-padding-top: 24
 body { margin: 0; background: var(--bg); color: var(--text); font: 16.5px/1.6 var(--body); -webkit-font-smoothing: antialiased; }
 a { color: var(--link); text-underline-offset: 3px; }
 img, video { max-width: 100%; }
+/* The family's headings: Sora 600, 1.2, -0.02em. Every h1-h3 of the page, the
+   chrome's own and a site's unstyled ones; a heading that wants another weight
+   or tracking sets it. An h4 has the same look inside the chrome's own parts
+   (a section, a card, a band), at zero specificity; elsewhere (a document's
+   prose) it stays the browser's. */
 h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.2; letter-spacing: -0.02em; text-wrap: balance; }
+:where(.section, .section-head, .card, .band) h4 { font-family: var(--display); font-weight: 600; line-height: 1.2; letter-spacing: -0.02em; text-wrap: balance; }
 :focus-visible { outline: 2px solid var(--aurora); outline-offset: 3px; }
 /* For a screen reader only. */
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -134,14 +140,16 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.2; le
 }
 
 /* ---- Text and buttons. */
-/* A section's subject over its title, in the aurora's colour. */
-.eyebrow { margin: 0 0 10px; font: 400 13px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--aurora); overflow-wrap: anywhere; }
+/* A section's subject over its title, in the aurora's colour. The line height
+   is --eyebrow-leading, `normal` as PlayGuard's (the `font` shorthand would
+   reset it to that anyway); a site whose text sets 1.6 puts it on :root. */
+.eyebrow { margin: 0 0 10px; font: 400 13px/var(--eyebrow-leading, normal) var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--aurora); overflow-wrap: anywhere; }
 /* The pill over a title: the latest release, a status. A link or a span. */
 .pill-eyebrow { margin: 0 0 18px; }
 .pill-eyebrow > :where(a, span):not(.pill-more) {
   display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 12px;
   border: 1px solid rgb(0 255 204 / 0.35); border-radius: 999px; background: rgb(0 255 204 / 0.08);
-  color: var(--aurora); font: 500 13px var(--mono); text-decoration: none;
+  color: var(--aurora); font: 500 13px/var(--eyebrow-leading, normal) var(--mono); text-decoration: none;
 }
 .pill-eyebrow.caps > :not(.pill-more) { text-transform: uppercase; letter-spacing: 0.04em; }
 /* ... and beside it a link to more (what changed): plain, with an arrow. */
@@ -171,19 +179,22 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.2; le
 .wrap { max-width: calc(var(--content) + 32px); margin: 0 auto; padding-left: var(--gutter-l); padding-right: var(--gutter-r); }
 .section { max-width: calc(var(--content) + 32px); margin: 0 auto; padding: clamp(48px, 7vw, 88px) var(--gutter-r) 0 var(--gutter-l); }
 .section > h2, .section-head h2 { font-size: clamp(1.75rem, 4vw, 2.5rem); letter-spacing: -0.025em; margin: 0 0 28px; }
-.section-head { display: grid; gap: 10px; margin-bottom: 32px; max-width: 64ch; }
+.section-head { display: grid; gap: 10px; margin-bottom: 32px; }
 .section-head .eyebrow, .section-head h2 { margin: 0; }
-.section-head p:not(.eyebrow) { margin: 0; color: var(--muted); }
+/* The lead keeps a measure; the title takes the width it needs. */
+.section-head p:not(.eyebrow) { margin: 0; max-width: 64ch; color: var(--muted); }
 /* A hero (the site's own) starts at the header's edge, 1180px of content. */
 :where(.hero) { padding-left: var(--edge-l); padding-right: var(--edge-r); }
 /* Paragraphs and headings without the browser's margins, where a site asks
    (class on <body> or any container). Zero specificity: a rule of its own wins. */
-:where(.reset-margins) :where(p, h1, h2, h3) { margin: 0; }
+:where(.reset-margins) :where(p, h1, h2, h3, h4) { margin: 0; }
 /* A <main class="wrap"> already has the gutters, and a band in a section too:
    what is inside takes none of its own. */
 .wrap > .section { padding-left: 0; padding-right: 0; }
 .wrap > .section:not(.narrow) { max-width: none; }
 .wrap > .band, .section > .band { margin-left: 0; margin-right: 0; max-width: none; }
+/* ... and when it opens its container, the container's padding is the space above it. */
+.wrap > .band:first-child, .section > .band:first-child { margin-top: 0; }
 .section.narrow { max-width: 720px; padding-bottom: 80px; }
 .lede { color: var(--muted); font-size: clamp(1.0625rem, 1.6vw, 1.15rem); max-width: 56ch; }
 /* The closing call to action of a page. */
@@ -199,6 +210,9 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.2; le
 .band-actions { display: flex; flex-direction: column; gap: 10px; flex: none; }
 .band h2 { margin: 0 0 10px; font-size: clamp(1.5rem, 3.4vw, 2.1rem); letter-spacing: -0.025em; }
 .band p { margin: 0; color: var(--muted); }
+/* An eyebrow in a band: `.band p` wins over `.eyebrow`, and PlayGuard's is the
+   text's grey; a site that wants the aurora's puts --band-eyebrow on :root. */
+.band .eyebrow { color: var(--band-eyebrow, var(--muted)); }
 @media (min-width: 1212px) { .band { margin-left: auto; margin-right: auto; } }
 @media (max-width: 600px) {
   .band { flex-direction: column; align-items: flex-start; margin: 48px var(--gutter-r) 0 var(--gutter-l); padding: 24px 20px; }
@@ -208,7 +222,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.2; le
 
 /* ---- The card: under the pointer its edge lights up in the aurora where
    the pointer is (chrome.js sets --mx and --my). */
-.cards { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
+.cards { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--cards-min, 250px)), 1fr)); gap: 16px; }
 .card { position: relative; display: grid; gap: 10px; align-content: start; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; transition: transform 0.3s, border-color 0.3s; }
 .card h3 { margin: 0; font-size: 18px; letter-spacing: -0.01em; }
 .card p { margin: 0; color: var(--muted); font-size: 15.5px; }
@@ -229,9 +243,15 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.2; le
 @media (max-width: 860px) {
   .cards { gap: 12px; }
   .card { padding: 16px; }
-  /* Its icon beside the title; a card without an icon stays a stack. */
-  .card:has(> .icon) { grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; }
-  .card:has(> .icon) > .icon { grid-row: span 2; }
+  /* Its icon beside the title, its text under the title; a card without an icon
+     stays a stack, and so does a `.stack` one (a card that ends in a <pre> or a
+     table, whose width a column would take). `.below`: the text under both,
+     the whole width of the card. */
+  .card:where(:not(.stack)):has(> .icon) { grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; }
+  .card:where(:not(.stack)):has(> .icon) > .icon { grid-row: span 2; }
+  .card.below:has(> .icon) { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px 14px; }
+  .card.below:has(> .icon) > .icon { grid-row: auto; }
+  .card.below:has(> .icon) > :not(.icon, h3, h4) { grid-column: 1 / -1; }
 }
 @media (max-width: 600px) {
   .cards { grid-template-columns: minmax(0, 1fr); }
@@ -239,7 +259,9 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.2; le
 
 /* ---- The footer (Site.footer()): the project, its columns, Boréale's sites
    (sites.json) and the support, under a horizon of aurora. */
-.footer { position: relative; margin-top: 88px; background: linear-gradient(180deg, rgb(14 26 51 / 0.5), transparent); }
+/* 88px above it, --footer-gap: a site whose last section carries its own space
+   under it puts 0 on :root rather than have the two stack. */
+.footer { position: relative; margin-top: var(--footer-gap, 88px); background: linear-gradient(180deg, rgb(14 26 51 / 0.5), transparent); }
 .footer-inner { max-width: calc(var(--content) + 32px); margin: 0 auto; padding: 40px var(--gutter-r) calc(32px + env(safe-area-inset-bottom)) var(--gutter-l); color: var(--dusk); font-size: 15px; }
 .footer a { color: var(--muted); }
 .footer strong { color: var(--text); font: 600 17px var(--display); }

@@ -144,6 +144,18 @@ class Footer(unittest.TestCase):
         self.assertIn('<a href="https://example.org/" lang="en" rel="noreferrer">', out)
         self.assertIn('<a href="try/" class="nav-cta" rel="next">', out)
 
+    def test_a_legal_notice_of_the_sites_own(self):
+        out = self.footer("ha", legal=("Mentions", "../legal/"))
+        self.assertIn('<li><a href="../legal/">Mentions</a></li>', out)
+        self.assertNotIn("https://boreale.dev/legal/", out)
+        # Written as the other entries are: attributes, the rules for links out, UTM to our sites.
+        out = self.footer("ha", language="de", legal=("Rechtliches", "https://boreale.dev/de/mentions/", {"lang": "fr"}))
+        self.assertRegex(out, r'<a href="https://boreale.dev/de/mentions/\?utm_source=ha&amp;utm_medium=footer"[^>]*lang="fr"[^>]*>Rechtliches</a>')
+        out = self.footer("ha", legal=("Terms", "https://example.org/terms/"))
+        self.assertIn('<a href="https://example.org/terms/" rel="noreferrer">Terms</a>', out)
+        # Not given: boreale.dev's, in the language's folder.
+        self.assertIn("https://boreale.dev/de/legal/", self.footer("ha", language="de"))
+
     def test_boreale_itself_has_no_part_of_link(self):
         self.assertNotIn('class="boreale"', self.footer("boreale"))
         self.assertIn('class="boreale"', self.footer("atlas"))
@@ -198,7 +210,7 @@ class Stylesheet(unittest.TestCase):
 
     def test_card_grid_only_with_an_icon_and_at_860(self):
         self.assertIn("@media (max-width: 860px) {\n  .cards { gap: 12px; }", self.css)
-        self.assertIn(".card:has(> .icon) { grid-template-columns: auto minmax(0, 1fr)", self.css)
+        self.assertIn(".card:where(:not(.stack)):has(> .icon) { grid-template-columns: auto minmax(0, 1fr)", self.css)
         self.assertNotIn(".card { grid-template-columns", self.css)
         self.assertIn(".card svg.icon { fill: none; stroke: currentColor; stroke-width: 1.8;", self.css)
 
@@ -211,7 +223,7 @@ class Stylesheet(unittest.TestCase):
         self.assertIn(".pill-eyebrow.caps > :not(.pill-more)", self.css)
         self.assertIn(".pill-eyebrow > :where(a, span):not(.pill-more)", self.css)
         self.assertIn(".pill-eyebrow .pill-more", self.css)
-        self.assertIn(":where(.reset-margins) :where(p, h1, h2, h3) { margin: 0; }", self.css)
+        self.assertIn(":where(.reset-margins) :where(p, h1, h2, h3, h4) { margin: 0; }", self.css)
         self.assertIn(":where(.hero) { padding-left: var(--edge-l)", self.css)
         self.assertIn(".band > div:first-child { max-width: 62ch; }", self.css)
         self.assertIn(".band-actions", self.css)
@@ -224,6 +236,26 @@ class Stylesheet(unittest.TestCase):
     def test_gutters_are_not_doubled(self):
         self.assertIn(".wrap > .section { padding-left: 0; padding-right: 0; }", self.css)
         self.assertIn(".wrap > .band, .section > .band { margin-left: 0; margin-right: 0; max-width: none; }", self.css)
+
+    def test_v4_2_cards(self):
+        # The opt-out and the variant keep the 0,2,0 specificity of v4.1's rule (a site's override still wins).
+        self.assertIn(".card:where(:not(.stack)):has(> .icon) > .icon { grid-row: span 2; }", self.css)
+        self.assertIn(".card.below:has(> .icon) > :not(.icon, h3, h4) { grid-column: 1 / -1; }", self.css)
+        self.assertIn("minmax(min(100%, var(--cards-min, 250px)), 1fr)", self.css)
+
+    def test_v4_2_section_head_caps_the_lead_only(self):
+        self.assertNotRegex(self.rule(".section-head"), r"max-width")
+        self.assertIn("max-width: 64ch", self.rule(".section-head p:not(.eyebrow)"))
+
+    def test_v4_2_spacing_and_text(self):
+        self.assertIn(".wrap > .band:first-child, .section > .band:first-child { margin-top: 0; }", self.css)
+        self.assertIn("margin-top: var(--footer-gap, 88px)", self.rule(".footer"))
+        self.assertIn(".section.narrow { max-width: 720px; padding-bottom: 80px; }", self.css)  # PlayGuard's 80 + 88
+        self.assertIn("font: 400 13px/var(--eyebrow-leading, normal) var(--mono)", self.css)
+        self.assertIn("font: 500 13px/var(--eyebrow-leading, normal) var(--mono)", self.css)
+        self.assertEqual(self.rule(".band .eyebrow").strip(), "color: var(--band-eyebrow, var(--muted));")
+        self.assertIn(":where(.reset-margins) :where(p, h1, h2, h3, h4) { margin: 0; }", self.css)
+        self.assertIn(":where(.section, .section-head, .card, .band) h4 {", self.css)
 
     def test_footer_fine_print_is_namespaced(self):
         self.assertIn(".footer-fine", self.css)

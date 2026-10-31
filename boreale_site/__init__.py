@@ -498,7 +498,7 @@ class Site:
             f'    {self.languages(language, catalog, root, path)}\n  </header>')
 
     def footer(self, language: str, catalog: dict, root: str, columns=(), about=(), fine: str = None,
-               brand: str = None, support: bool = True) -> str:
+               brand: str = None, support: bool = True, legal: tuple = None) -> str:
         """The page's footer (chrome.css), the same on every site: the project
         (name, `about` lines), the site's own `columns`, Boréale's sites, read
         from sites.json so that a site added appears everywhere, then the
@@ -511,7 +511,10 @@ class Site:
         about    lines under the name (the licence), each a paragraph.
         fine     the fine print under the columns.
         brand    the first column's name, else the site's mark and name.
-        support  False: no column for the support (GitHub Sponsors, Ko-fi)."""
+        support  False: no column for the support (GitHub Sponsors, Ko-fi).
+        legal    (text, href): the site's own legal notice instead of boreale.dev's
+                 in Boréale's column, written as `columns` entries are (the same
+                 rules for links out, UTM tags to our sites included)."""
         folder_ = folder(language)
         brand = brand if brand is not None else (
             f'<img src="{root}assets/marks/{self.key}.svg" alt="" width="20" height="20"> <strong>{self.name}</strong>')
@@ -525,7 +528,7 @@ class Site:
             return f"<div>\n          <h2>{heading}</h2>\n          <ul>{li}</ul>\n        </div>"
 
         sites = [(s["name"], s["url"] + folder_) for _, group in self.groups for s in group if s["key"] != self.key]
-        sites.append((catalog["chrome_legal"], f"https://boreale.dev/{folder_}legal/"))
+        sites.append(tuple(legal) if legal else (catalog["chrome_legal"], f"https://boreale.dev/{folder_}legal/"))
         cols = [column(heading, entries) for heading, entries in columns] + [column("Boréale", sites)]
         if support:
             cols.append(column(catalog["chrome_support"], [("GitHub Sponsors", "https://github.com/sponsors/JigSawFr"),
