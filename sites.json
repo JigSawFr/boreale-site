@@ -8,6 +8,9 @@
       {"key": "playguard", "name": "PlayGuard", "url": "https://guard.boreale.dev/", "utm": "guard"},
       {"key": "playshelf", "name": "PlayShelf", "url": "https://shelf.boreale.dev/", "utm": "shelf", "soon": true}
     ]},
+    {"title": "sites_integrations", "sites": [
+      {"key": "ha", "name": "Home Assistant", "url": "https://ha.boreale.dev/", "utm": "ha"}
+    ]},
     {"title": "sites_libraries", "sites": [
       {"key": "aurore", "name": "Aurore", "url": "https://aurore.boreale.dev/", "utm": "aurore"}
     ]},
