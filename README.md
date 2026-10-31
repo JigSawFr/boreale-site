@@ -3,7 +3,7 @@
 What Boréale's websites share — [boreale.dev](https://boreale.dev/?utm_source=github&utm_medium=readme) and its
 sub-domains: [guard.](https://guard.boreale.dev/?utm_source=github&utm_medium=readme),
 [shelf.](https://shelf.boreale.dev/?utm_source=github&utm_medium=readme), [aurore.](https://aurore.boreale.dev/?utm_source=github&utm_medium=readme),
-[atlas.](https://atlas.boreale.dev/?utm_source=github&utm_medium=readme), [lantern.](https://lantern.boreale.dev/?utm_source=github&utm_medium=readme) —
+[atlas.](https://atlas.boreale.dev/?utm_source=github&utm_medium=readme), [lantern.](https://lantern.boreale.dev/?utm_source=github&utm_medium=readme), [ha.](https://ha.boreale.dev/?utm_source=github&utm_medium=readme) —
 kept once, so that a rule or a site added changes in one place.
 
 Each site has it as a git submodule, `library/boreale-site`, and keeps its own

@@ -3,6 +3,7 @@
   "sites_label": "I progetti Boréale",
   "sites_soon": "In arrivo",
   "sites_homebrew": "Homebrew per Switch",
+  "sites_integrations": "Integrazioni",
   "sites_libraries": "Librerie",
   "sites_open": "Dati e protocolli aperti",
   "sites_boreale": "Homebrew per le lunghe notti",
@@ -10,5 +11,6 @@
   "sites_playshelf": "La tua libreria di giochi, sulla console",
   "sites_aurore": "La libreria di interfaccia dietro di loro",
   "sites_atlas": "Una mappa di tutti i giochi, su ogni piattaforma",
-  "sites_lantern": "Il protocollo tra server e console"
+  "sites_lantern": "Il protocollo tra server e console",
+  "sites_ha": "I tuoi homebrew in Home Assistant"
 }
