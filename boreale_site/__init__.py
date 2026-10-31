@@ -435,23 +435,32 @@ class Site:
         return f'<a class="skip" href="#main">{catalog["chrome_skip"]}</a>'
 
     @staticmethod
-    def sky(home: bool = False, canvas: bool = True) -> str:
+    def sky(home: bool = False, canvas: bool = True, veils: bool = True) -> str:
         """The opening of the sky behind the header and the hero, which the
         page closes with </div> after them. A home page (`home`) has the
-        aurora, a canvas chrome.js moves; any other page the quieter sky, a
-        gradient and a line under it. `canvas=False`: a home page whose
-        aurora stays a gradient (a hero that needs the stillness of one), the
-        way a page opts out of the canvas."""
+        aurora, a canvas chrome.js moves, and the night's veils and stars
+        under it; any other page the quieter sky, a gradient and a line under
+        it. A page opts out of the canvas with `canvas=False` (a still
+        aurora), of the veils with `veils=False` (the page not found, a home
+        that wants a plain night under its hero)."""
         if not home:
             return '<div class="sky">'
-        return '<div class="sky sky-home">' + ('\n  <canvas id="sky" aria-hidden="true"></canvas>' if canvas else "")
+        return (f'<div class="sky sky-home{"" if veils else " no-veils"}">'
+                + ('\n  <canvas id="sky" aria-hidden="true"></canvas>' if canvas else ""))
 
-    def anchor(self, href: str, label: str, medium: str, css: str = "", current: bool = False) -> str:
+    def anchor(self, href: str, label: str, medium: str, css: str = "", current: bool = False, attrs: dict = None) -> str:
         """An <a> of the chrome by the rules for links out: `href` as written
         in the page's HTML, tagged for Umami (`medium`: nav, footer) and
-        given its referrer rule when it leaves the site."""
+        given its referrer rule when it leaves the site. `attrs`: more
+        attributes (lang, hreflang, rel, class...), their values text for an
+        attribute; a `rel` keeps its words and gains noreferrer where the rule
+        wants it."""
         url = self.utm(href, medium)
-        tag = f'<a href="{url}"' + (f' class="{css}"' if css else "") + (' aria-current="page"' if current else "") + ">"
+        attrs = dict(attrs or {})
+        css = " ".join(c for c in (css, attrs.pop("class", "")) if c)
+        extra = "".join(f' {k}="{attribute(str(v))}"' for k, v in attrs.items())
+        tag = (f'<a href="{url}"' + (f' class="{css}"' if css else "") + extra
+               + (' aria-current="page"' if current else "") + ">")
         if urlparse(html.unescape(url)).scheme in ("http", "https"):
             tag = self.link_out(tag, url)
         return f"{tag}{label}</a>"
@@ -463,22 +472,22 @@ class Site:
         with the menu of Boréale's sites (switcher()), the nav, the languages
         (languages(), `path` the page's path in its language).
 
-        links    [(key, href)]: the page's links, in order; `key` is the
-                 catalog's text. Plain links after the name.
-        cta      (key, href): the call to action, the pill in the aurora's
+        links    [(key, href)] or [(key, href, {attributes})]: the page's links,
+                 in order; `key` is the catalog's text. Plain links after the name.
+        cta      (key, href[, {attributes}]): the call to action, the pill in the aurora's
                  gradient; first of the links on a phone.
         github   the repository's address: a GitHub link after the pill,
                  which a phone leaves to the footer.
         current  the key of the link the page is (aria-current="page").
-        label    the nav's accessible name (the site's name).
+        label    the nav's accessible name; the site's name by default.
         latest, brand, home: switcher()'s.
         `href`s are attribute-ready, as written in the page's HTML."""
         items = []
-        for key, href in links:
-            items.append(self.anchor(href, catalog[key], "nav", current=key == current))
+        for key, href, *more in links:
+            items.append(self.anchor(href, catalog[key], "nav", current=key == current, attrs=(more or [None])[0]))
         if cta:
-            key, href = cta
-            items.append(self.anchor(href, catalog[key], "nav", "nav-cta", current=key == current))
+            key, href, *more = cta
+            items.append(self.anchor(href, catalog[key], "nav", "nav-cta", current=key == current, attrs=(more or [None])[0]))
         if github:
             items.append(self.anchor(github, "GitHub", "nav", "nav-gh"))
         nav = "\n".join(f"      {a}" for a in items)
@@ -495,8 +504,10 @@ class Site:
         from sites.json so that a site added appears everywhere, then the
         support.
 
-        columns  [(heading, [(text, href)])]: the site's own columns, texts
-                 ready for the page (catalog texts, "GitHub").
+        columns  [(heading, [(text, href) or (text, href, {attributes})])]: the
+                 site's own columns, texts ready for the page (catalog texts,
+                 "GitHub"); the attributes (lang, hreflang, rel, class) go
+                 through the rules for links out like the rest.
         about    lines under the name (the licence), each a paragraph.
         fine     the fine print under the columns.
         brand    the first column's name, else the site's mark and name.
@@ -509,7 +520,8 @@ class Site:
             lines.append("<p>" + self.anchor(f"https://boreale.dev/{folder_}", catalog["chrome_part_of"], "footer", "boreale") + "</p>")
 
         def column(heading, entries):
-            li = "".join(f"<li>{self.anchor(href, text, 'footer')}</li>" for text, href in entries)
+            li = "".join(f"<li>{self.anchor(href, text, 'footer', attrs=(more or [None])[0])}</li>"
+                         for text, href, *more in entries)
             return f"<div>\n          <h2>{heading}</h2>\n          <ul>{li}</ul>\n        </div>"
 
         sites = [(s["name"], s["url"] + folder_) for _, group in self.groups for s in group if s["key"] != self.key]
@@ -519,7 +531,7 @@ class Site:
             cols.append(column(catalog["chrome_support"], [("GitHub Sponsors", "https://github.com/sponsors/JigSawFr"),
                                                             ("Ko-fi", "https://ko-fi.com/jigsawfr")]))
         first = "<div>\n          " + "\n          ".join(lines) + "\n        </div>"
-        fine = f'\n    <p class="fine">{fine}</p>' if fine else ""
+        fine = f'\n    <p class="footer-fine">{fine}</p>' if fine else ""
         return self.links_out(
             f'<footer class="footer">\n  <div class="footer-inner">\n    <div class="footer-cols">\n'
             f'        {first}\n        ' + "\n        ".join(cols) + f'\n    </div>{fine}\n  </div>\n</footer>')

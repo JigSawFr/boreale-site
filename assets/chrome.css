@@ -80,16 +80,16 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.2; le
 .sky-home::after { content: ""; position: absolute; inset: auto 0 0 0; height: 40%; z-index: -1; background: linear-gradient(to top, var(--abyss), transparent); }
 /* The night goes on under a home's hero: veils of aurora down the page and
    faint stars. */
-.sky-home ~ main { position: relative; isolation: isolate; }
-.sky-home ~ main::before, .sky-home ~ main::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
-.sky-home ~ main::before {
+.sky-home:not(.no-veils) ~ main { position: relative; isolation: isolate; }
+.sky-home:not(.no-veils) ~ main::before, .sky-home:not(.no-veils) ~ main::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.sky-home:not(.no-veils) ~ main::before {
   background:
     radial-gradient(45% 22% at -5% 22%, rgb(0 255 204 / 0.07), transparent 70%),
     radial-gradient(45% 22% at 105% 45%, rgb(138 92 255 / 0.09), transparent 70%),
     radial-gradient(50% 20% at -5% 72%, rgb(51 187 255 / 0.07), transparent 70%),
     radial-gradient(45% 18% at 105% 92%, rgb(0 255 204 / 0.06), transparent 70%);
 }
-.sky-home ~ main::after {
+.sky-home:not(.no-veils) ~ main::after {
   opacity: 0.55;
   background-image:
     radial-gradient(1px 1px at 24px 36px, #e8eef7, transparent), radial-gradient(1px 1px at 132px 92px, #e8eef7, transparent),
@@ -122,7 +122,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.2; le
   .nav.more { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent); }
   .nav a { padding: 0 10px; }
   .nav a:first-child:not(.nav-cta) { padding-left: 0; }
-  .nav .nav-cta { order: -1; padding: 0 14px; }
+  .nav .nav-cta { order: -1; padding: 0 14px; margin-right: var(--cta-gap, 0); }
   .nav .nav-gh { display: none; }
   .settings { margin-left: auto; gap: 6px; }
   .lang-name { display: none; }
@@ -138,16 +138,21 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.2; le
 .eyebrow { margin: 0 0 10px; font: 400 13px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--aurora); overflow-wrap: anywhere; }
 /* The pill over a title: the latest release, a status. A link or a span. */
 .pill-eyebrow { margin: 0 0 18px; }
-.pill-eyebrow > * {
+.pill-eyebrow > :where(a, span):not(.pill-more) {
   display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 12px;
   border: 1px solid rgb(0 255 204 / 0.35); border-radius: 999px; background: rgb(0 255 204 / 0.08);
   color: var(--aurora); font: 500 13px var(--mono); text-decoration: none;
 }
+.pill-eyebrow.caps > :not(.pill-more) { text-transform: uppercase; letter-spacing: 0.04em; }
+/* ... and beside it a link to more (what changed): plain, with an arrow. */
+.pill-eyebrow:has(.pill-more) { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+.pill-eyebrow .pill-more { display: inline-flex; align-items: center; min-height: 32px; color: var(--snow); font-size: 15px; text-decoration: underline; text-decoration-color: rgb(232 238 247 / 0.4); }
+.pill-eyebrow .pill-more::after { content: "\00a0→"; color: var(--aurora); }
 .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
 .button {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; padding: 0 20px;
   border-radius: 12px; border: 1px solid var(--line); background: rgb(11 20 36 / 0.4);
-  color: var(--text); text-decoration: none; font-weight: 600;
+  color: var(--text); text-decoration: none; font-weight: 600; font-size: var(--button-size, inherit);
 }
 .button.primary { background: var(--snow); border-color: var(--snow); color: var(--abyss); }
 /* Hover only where there is a pointer: a finger's tap would leave it on. */
@@ -156,9 +161,9 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.2; le
   .brand:hover { color: var(--text); }
   .nav a:hover { color: var(--text); background: rgb(232 238 247 / 0.06); }
   .nav .nav-cta:hover { color: var(--abyss); background: var(--aurora); }
-  .button:hover { border-color: var(--mist); color: var(--text); }
+  .button:hover { border-color: var(--mist); }
   .button.primary:hover { background: var(--aurora); border-color: var(--aurora); color: var(--abyss); }
-  .pill-eyebrow a:hover { border-color: var(--aurora); color: var(--aurora); }
+  .pill-eyebrow > a:not(.pill-more):hover { border-color: var(--aurora); color: var(--aurora); }
 }
 
 /* ---- Sections: 1180px of content between the gutters, an 88px rhythm
@@ -168,7 +173,17 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.2; le
 .section > h2, .section-head h2 { font-size: clamp(1.75rem, 4vw, 2.5rem); letter-spacing: -0.025em; margin: 0 0 28px; }
 .section-head { display: grid; gap: 10px; margin-bottom: 32px; max-width: 64ch; }
 .section-head .eyebrow, .section-head h2 { margin: 0; }
-.section-head p { margin: 0; color: var(--muted); }
+.section-head p:not(.eyebrow) { margin: 0; color: var(--muted); }
+/* A hero (the site's own) starts at the header's edge, 1180px of content. */
+:where(.hero) { padding-left: var(--edge-l); padding-right: var(--edge-r); }
+/* Paragraphs and headings without the browser's margins, where a site asks
+   (class on <body> or any container). Zero specificity: a rule of its own wins. */
+:where(.reset-margins) :where(p, h1, h2, h3) { margin: 0; }
+/* A <main class="wrap"> already has the gutters, and a band in a section too:
+   what is inside takes none of its own. */
+.wrap > .section { padding-left: 0; padding-right: 0; }
+.wrap > .section:not(.narrow) { max-width: none; }
+.wrap > .band, .section > .band { margin-left: 0; margin-right: 0; max-width: none; }
 .section.narrow { max-width: 720px; padding-bottom: 80px; }
 .lede { color: var(--muted); font-size: clamp(1.0625rem, 1.6vw, 1.15rem); max-width: 56ch; }
 /* The closing call to action of a page. */
@@ -179,13 +194,16 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.2; le
   background: radial-gradient(80% 140% at 0% 0%, rgb(0 255 204 / 0.14), transparent 60%),
               radial-gradient(70% 140% at 100% 100%, rgb(138 92 255 / 0.18), transparent 60%), var(--night);
 }
-.band > div { max-width: 62ch; }
+.band > div:first-child { max-width: 62ch; }
+/* Buttons beside the text, one under the other; the width of the band on a phone. */
+.band-actions { display: flex; flex-direction: column; gap: 10px; flex: none; }
 .band h2 { margin: 0 0 10px; font-size: clamp(1.5rem, 3.4vw, 2.1rem); letter-spacing: -0.025em; }
 .band p { margin: 0; color: var(--muted); }
 @media (min-width: 1212px) { .band { margin-left: auto; margin-right: auto; } }
 @media (max-width: 600px) {
   .band { flex-direction: column; align-items: flex-start; margin: 48px var(--gutter-r) 0 var(--gutter-l); padding: 24px 20px; }
   .band .button { align-self: stretch; text-align: center; }
+  .band-actions { align-self: stretch; }
 }
 
 /* ---- The card: under the pointer its edge lights up in the aurora where
@@ -206,10 +224,17 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.2; le
   .card:hover { transform: translateY(-3px); }
   .card:hover::before { opacity: 1; }
 }
+/* An icon: its strokes, as the sites' drawings carry them. */
+.card svg.icon { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 860px) {
+  .cards { gap: 12px; }
+  .card { padding: 16px; }
+  /* Its icon beside the title; a card without an icon stays a stack. */
+  .card:has(> .icon) { grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; }
+  .card:has(> .icon) > .icon { grid-row: span 2; }
+}
 @media (max-width: 600px) {
-  .cards { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-  .card { grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; padding: 16px; }
-  .card .icon { grid-row: span 2; }
+  .cards { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ---- The footer (Site.footer()): the project, its columns, Boréale's sites
@@ -224,7 +249,9 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.2; le
 .footer h2 { font: 400 12px var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--mist); margin: 0 0 10px; }
 .footer ul { list-style: none; padding: 0; margin: 0; }
 .footer li { margin: 4px 0; }
-.fine { font-size: 13px; }
+.footer-fine { font-size: 13px; }
+.footer-cols > * { min-width: 0; overflow-wrap: anywhere; }
+.footer a { overflow-wrap: anywhere; }
 .footer::before {
   content: ""; position: absolute; left: 50%; top: 0; width: min(var(--content), 100%); height: 140px; transform: translateX(-50%); pointer-events: none;
   background: radial-gradient(50% 100% at 50% 0%, rgb(0 255 204 / 0.14), rgb(51 187 255 / 0.06) 45%, transparent 75%);
@@ -237,9 +264,12 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.2; le
 @media (max-width: 860px) {
   .footer a { display: inline-block; padding: 10px 0; }
   .footer-inner p { margin: 6px 0; }
-  .footer-cols { grid-template-columns: 1fr 1fr; grid-auto-flow: row; gap: 16px; }
+  .footer-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-auto-flow: row; gap: 16px; }
   .footer-cols > :first-child { grid-column: 1 / -1; }
   .footer li { margin: 0; }
+}
+@media (max-width: 420px) {
+  .footer-cols { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ---- Motion: the sections rise into view once (chrome.js; not with less

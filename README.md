@@ -157,21 +157,25 @@ footer = site.footer(language, catalog, root,
 
 - **`Site.header(language, catalog, root, path, links, cta, github, current, label, latest, brand, home)`**:
   the name and the menu of Boréale's sites (`switcher()`), the nav, the languages
-  (`languages()`). `links` are `(catalog key, href)`, `cta` the same, `github` an
-  address. `label` is the nav's accessible name (the site's name). Every link goes
+  (`languages()`). `links` are `(catalog key, href)` or `(key, href, {attributes})`
+  (lang, hreflang, rel, class), `cta` the same, `github` an address. `label` is the
+  nav's accessible name: **the site's name** unless given (a site that keeps its own
+  "Main" text passes it; the library has no common one). Every link goes
   through `links_out()`: UTM tags to our sites (`utm_medium=nav`), `noreferrer` or
   `strict-origin` as the rule says; calling `links_out()` on the page again changes
   nothing. A phone gets two rows, the links on their own with a fading edge, the pill
   first and GitHub left to the footer (`chrome.css`, `chrome.js`).
-- **`Site.sky(home=False, canvas=True)`**: the sky's opening tag, which the page closes
+- **`Site.sky(home=False, canvas=True, veils=True)`**: the sky's opening tag, which the page closes
   after the hero. The home page has the aurora (canvas, `chrome.js`) and the night's
   veils and stars under it. **Any other page opts out of the canvas** with
   `sky()` (the quieter sky, a line under it); a home that must stay still takes
-  `sky(home=True, canvas=False)`. Nothing moves with `prefers-reduced-motion`, or while
+  `sky(home=True, canvas=False)`. The veils and stars under a home's hero
+  (`.sky-home:not(.no-veils) ~ main`) are left out with `veils=False` (the page not found). Nothing moves with `prefers-reduced-motion`, or while
   the sky is out of view.
 - **`Site.footer(language, catalog, root, columns, about, fine, brand, support)`**: the
   project (mark, name, `about` lines, "A Boréale project"), the site's own `columns`
-  (`[(heading, [(text, href)])]`, texts ready for the page), Boréale's sites **read from
+  (`[(heading, [(text, href) or (text, href, {attributes})])]`, texts ready for the page;
+  the attributes (lang, hreflang, rel, class) go through the rules for links out), Boréale's sites **read from
   `sites.json`** (the others, in its order, and the legal notice, so a site added or ha
   appears everywhere), the support (`support=False` to leave it out), the fine print.
 - `Site.skip(catalog)` is the skip link; `Site.anchor(href, label, medium, css, current)`
@@ -179,7 +183,7 @@ footer = site.footer(language, catalog, root,
 - Classes `chrome.css` provides: `.sky`, `.sky-home`, `.top`, `.brand`, `.nav`,
   `.nav-cta`, `.nav-gh`, `.settings`, `.wrap`, `.section` (`.narrow`), `.section-head`,
   `.eyebrow`, `.lede`, `.pill-eyebrow`, `.actions`, `.button` (`.primary`), `.band`,
-  `.cards`/`.card` (with `.icon`, the pointer glow, the reveal), `.footer`, `.fine`,
+  `.cards`/`.card` (with `.icon`, the pointer glow, the reveal), `.footer`, `.footer-fine`,
   `.sr`, `.skip`, and the tokens (`--bg`, `--surface`, `--text`, `--muted`, `--line`,
   `--accent`, `--gutter-l/r`, `--edge-l/r`, `--content`). What stays in a site's
   `site.css`: its hero, its mock visuals, its documentation, cards of its own kind
@@ -205,17 +209,42 @@ in a browser; `tools/site_layout.py` (with axe) runs on the sample as on a site:
    stop the build (`copy_assets`).
 2. Replace the template's skip link, sky, `<header>` and `<footer>` with `site.skip()`,
    `site.sky()`, `site.header()`, `site.footer()`; the class `nav-try` becomes `nav-cta`,
-   the home's `body.home` selectors (`.home main`) are `.sky-home ~ main`, `.wrap` stays.
+   the home's `body.home` selectors (`.home main`) are `.sky-home ~ main`.
 3. Delete from `site.css`: the tokens `--night-2`, `--dusk`, `--link`, `--bg`... `--gutter-*`, the
    reset (`*`, `html`, `body`, `a`, `h1-h3`, `:focus-visible`, `.sr`, `.skip`), `.sky*`, `.top`,
    `.brand`, `.nav*`, the 1080px and 860px header rules, `.eyebrow`, `.button*`, `.actions`,
    the pill (`.release-pill`/`.pill`, as `.pill-eyebrow`), `.section*`, `.band`, `.cards`/`.card`
-   (base, glow, reveal), `.footer*`, `.fine`, the view-transition and reveal blocks.
+   (base, glow, reveal), `.footer*`, the view-transition and reveal blocks.
 4. Delete from `site.js`: the sky canvas, the nav's fading edge, the cards' pointer, the reveal.
 5. Delete from the site's catalogs `skip`, the legal/support/"part of Boréale" texts that
    `chrome_*` replace, and the site's hand-written list of Boréale's sites in the footer.
 6. In `tools/check_site.py`: `check.pages(..., chrome=True)`; drop the checks of the header's
    structure it carried.
+
+### Layout notes (v4.1)
+
+- **Gutters**: `.section` and `.band` carry the 16px gutters and the 1180px width themselves,
+  so on a home `<main>` is a plain element holding them. On a page whose `<main class="wrap">`
+  already has the gutters, `.wrap > .section` and `.wrap > .band` take none of their own, and a
+  `.band` inside a `.section` neither. A **hero** (the site's own element) takes the header's edge
+  (`--edge-l/r`, zero specificity: a rule of its own wins); it does not need `.wrap`. A rhythm that
+  is deliberately not 88px: `tools/chrome_layout.py --rhythm-skip <page>`.
+- **Mark**: `assets/marks/<key>.svg` is the family's mark, in the menu, the header (`brand=`
+  default) and the footer; PlayGuard's is drawn at 1.3, as its site did, so a site drops its own.
+- **Cards**: the icon beside the title and the 12px gap start at 860px (PlayGuard's) and only for a
+  card with a direct `.icon` child; any other card stays a stack. `.card svg.icon` has its
+  strokes (1.8, round, `currentColor`), the same as the sites' drawings carry.
+- **Buttons**: the size is the page's (16.5px as PlayGuard's), `--button-size: 1rem` on `:root`
+  for a site that wants 16px. A button's text turns aurora under the pointer, as a link (PlayGuard's).
+  Beside a band's text, `.band-actions` stacks its buttons and takes the band's width on a phone.
+- **Pill**: `.pill-eyebrow` styles its first link or span (not `.pill-more`); `.pill-eyebrow.caps`
+  is in capitals; `<a class="pill-more">` beside it is the plain "more" link with its arrow.
+- **Tokens a site sets on `:root`**: `--button-size`, `--cta-gap` (the pill's right margin on a
+  phone, 0 by default). **Margins**: `class="reset-margins"` on `<body>` (or a container) takes the
+  browser's margins off `p` and `h1`-`h3`, at zero specificity.
+- **Footer**: its columns cannot be wider than the screen (`min-width: 0`, long words break; one
+  column under 420px). `tools/chrome_layout.py <site> --languages` opens every page in the fifteen
+  languages at 320px and 390px to keep it so.
 
 ## The rules it carries
 
