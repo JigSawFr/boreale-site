@@ -432,6 +432,14 @@ its own schedule). The library's own CI runs `site.yml` on the sample site
 (`test-site-workflow.yml`), so a tag is cut from a main whose workflow
 passed.
 
+## Releases
+
+release-please keeps a `chore(main): release X.Y.Z` pull request up to date from
+the conventional commits; merging it creates the `vX.Y.Z` tag and the GitHub
+release (`feat` bumps the minor, `fix` the patch, a `!` the major). The reusable
+workflow is called at that tag's commit (`uses: ...site.yml@<sha> # vX.Y.Z`);
+Dependabot moves the sha and the comment together.
+
 ## Changing it
 
 `python3 -m unittest discover -s tests` before a pull request. A change here

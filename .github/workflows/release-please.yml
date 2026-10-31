@@ -1,0 +1,31 @@
+name: release-please
+
+# On every push to main, release-please keeps a "chore(main): release X.Y.Z"
+# pull request up to date (CHANGELOG.md) from the conventional commits.
+# Merging it creates the vX.Y.Z tag and the GitHub release: the tag the sites'
+# workflows (site.yml) and their library submodule are pinned to.
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release-please:
+    runs-on: ubuntu-slim
+    permissions:
+      contents: write
+      pull-requests: write
+    timeout-minutes: 10
+    steps:
+      # GITHUB_TOKEN: nothing here needs the release PR to trigger other
+      # workflows (it only touches CHANGELOG.md and the manifest) or a tag
+      # ruleset bypass. Repository setting needed: Settings > Actions > General >
+      # "Allow GitHub Actions to create and approve pull requests".
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
