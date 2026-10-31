@@ -30,7 +30,7 @@ TEXTS = {
     "pill": "v1.2.3 · Oct 31, 2026", "features": "Features", "features_lead": "What the chrome carries, nothing else.",
     "install": "Install", "cta_title": "Ready when you are", "cta_text": "A closing band, as the sites' pages end.",
     "inner_title": "An inner page", "inner_text": "A page under the quieter sky.",
-    "footer_license": "Free software, a sample.", "footer_project": "Sample", "footer_fine": "A sample, not a site.",
+    "footer_license": "Free software, a sample. Свободнораспространяемоепрограммноеобеспечениесоткрытымкодом", "footer_project": "Sample", "footer_fine": "A sample, not a site.",
     "card_a": "First card", "card_b": "Second card", "card_c": "Third card",
     "card_text": "Under the pointer, the edge lights up.",
 }

@@ -83,6 +83,12 @@ class SkyAndSkip(unittest.TestCase):
         self.assertIn("sky-home", still)
         self.assertNotIn("canvas", still)
 
+    def test_veils_opt_out(self):
+        self.assertEqual(boreale.Site.sky(home=True, veils=False), '<div class="sky sky-home no-veils">\n  <canvas id="sky" aria-hidden="true"></canvas>')
+        self.assertEqual(boreale.Site.sky(home=True, canvas=False, veils=False), '<div class="sky sky-home no-veils">')
+        self.assertNotIn("no-veils", boreale.Site.sky(home=True))
+        self.assertEqual(boreale.Site.sky(veils=False), '<div class="sky">')
+
     def test_skip(self):
         self.assertEqual(boreale.Site("atlas").skip(CATALOG), '<a class="skip" href="#main">Skip to content</a>')
 
@@ -115,10 +121,28 @@ class Footer(unittest.TestCase):
         self.assertIn('<li><a href="docs/">Start</a></li>', out)
         self.assertIn('href="https://github.com/JigSawFr/PlayGuard" referrerpolicy="strict-origin">Repo', out)
         self.assertIn("<p>Free software.</p>", out)
-        self.assertIn('<p class="fine">Fine print.</p>', out)
+        self.assertIn('<p class="footer-fine">Fine print.</p>', out)
         self.assertIn('href="https://ko-fi.com/jigsawfr" rel="noreferrer"', out)
         self.assertNotIn("Ko-fi", self.footer(support=False))
-        self.assertNotIn('class="fine"', self.footer())
+        self.assertNotIn('footer-fine', self.footer())
+
+    def test_entries_take_attributes(self):
+        out = self.footer(columns=[("Docs", [
+            ("Plain", "docs/"),
+            ("Règles", "https://example.org/fr/", {"lang": "fr", "hreflang": "fr", "rel": "external", "class": "x"}),
+            ("Ours", "https://boreale.dev/", {"rel": "noreferrer", "lang": 'a"b'})])])
+        self.assertIn('<li><a href="docs/">Plain</a></li>', out)
+        self.assertIn('<a href="https://example.org/fr/" class="x" lang="fr" hreflang="fr" rel="external noreferrer">Règles</a>', out)
+        # Our sites: tagged, strict-origin, and noreferrer taken off; the attribute's quote escaped.
+        self.assertIn('lang="a&quot;b"', out)
+        self.assertRegex(out, r'<a href="https://boreale.dev/\?utm_source=guard&amp;utm_medium=footer"[^>]*referrerpolicy="strict-origin"[^>]*>Ours')
+        self.assertNotRegex(out, r'boreale.dev/\?utm[^>]*noreferrer')
+
+    def test_header_links_take_attributes(self):
+        out = header(boreale.Site("atlas"), links=[("nav_a", "https://example.org/", {"lang": "en"})],
+                     cta=("nav_c", "try/", {"rel": "next"}))
+        self.assertIn('<a href="https://example.org/" lang="en" rel="noreferrer">', out)
+        self.assertIn('<a href="try/" class="nav-cta" rel="next">', out)
 
     def test_boreale_itself_has_no_part_of_link(self):
         self.assertNotIn('class="boreale"', self.footer("boreale"))
@@ -154,6 +178,60 @@ class Catalogs(unittest.TestCase):
             self.assertTrue((out / "assets" / "chrome.css").exists() and (out / "assets" / "chrome.js").exists())
             with self.assertRaises(SystemExit):  # a site's own chrome.css stops the build
                 boreale.copy_assets(out)
+
+
+class Stylesheet(unittest.TestCase):
+    """v4.1's rules, read from chrome.css (the browser run is chrome_layout.py)."""
+    css = (ROOT / "assets" / "chrome.css").read_text(encoding="utf-8")
+
+    def rule(self, selector):
+        m = re.search(re.escape(selector) + r"\s*\{([^}]*)\}", self.css)
+        self.assertIsNotNone(m, selector)
+        return m.group(1)
+
+    def test_veils_follow_the_class(self):
+        self.assertIn(".sky-home:not(.no-veils) ~ main::before", self.css)
+        self.assertNotIn(".sky-home ~ main::", self.css)
+
+    def test_eyebrow_in_a_section_head_stays_aurora(self):
+        self.assertIn(".section-head p:not(.eyebrow)", self.css)
+
+    def test_card_grid_only_with_an_icon_and_at_860(self):
+        self.assertIn("@media (max-width: 860px) {\n  .cards { gap: 12px; }", self.css)
+        self.assertIn(".card:has(> .icon) { grid-template-columns: auto minmax(0, 1fr)", self.css)
+        self.assertNotIn(".card { grid-template-columns", self.css)
+        self.assertIn(".card svg.icon { fill: none; stroke: currentColor; stroke-width: 1.8;", self.css)
+
+    def test_button_keeps_playguards_hover_and_size(self):
+        self.assertNotRegex(self.rule(".button:hover"), r"(?<![-\w])color")  # a:hover's aurora, as on guard.boreale.dev
+        self.assertIn("font-size: var(--button-size, inherit)", self.css)
+
+    def test_tokens_and_helpers(self):
+        self.assertIn("margin-right: var(--cta-gap, 0)", self.css)
+        self.assertIn(".pill-eyebrow.caps > :not(.pill-more)", self.css)
+        self.assertIn(".pill-eyebrow > :where(a, span):not(.pill-more)", self.css)
+        self.assertIn(".pill-eyebrow .pill-more", self.css)
+        self.assertIn(":where(.reset-margins) :where(p, h1, h2, h3) { margin: 0; }", self.css)
+        self.assertIn(":where(.hero) { padding-left: var(--edge-l)", self.css)
+        self.assertIn(".band > div:first-child { max-width: 62ch; }", self.css)
+        self.assertIn(".band-actions", self.css)
+
+    def test_footer_cannot_overflow(self):
+        self.assertIn(".footer-cols > * { min-width: 0; overflow-wrap: anywhere; }", self.css)
+        self.assertIn("grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-auto-flow: row", self.css)
+        self.assertLess(self.css.index("  .footer li { margin: 0; }"), self.css.index("@media (max-width: 420px)"))
+
+    def test_gutters_are_not_doubled(self):
+        self.assertIn(".wrap > .section { padding-left: 0; padding-right: 0; }", self.css)
+        self.assertIn(".wrap > .band, .section > .band { margin-left: 0; margin-right: 0; max-width: none; }", self.css)
+
+    def test_footer_fine_print_is_namespaced(self):
+        self.assertIn(".footer-fine", self.css)
+        self.assertNotRegex(self.css, r"(?<![-\w])\.fine\b")
+
+    def test_the_mark_is_playguards_own(self):
+        mark = (ROOT / "assets" / "marks" / "playguard.svg").read_text(encoding="utf-8")
+        self.assertIn("scale(1.3)", mark)
 
 
 class Sample(unittest.TestCase):
