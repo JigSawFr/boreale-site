@@ -1,0 +1,71 @@
+name: test-site-workflow
+
+# The reusable workflow (site.yml) run on the library's own sample site
+# (tools/sample_site.py), so that a change to it is proved here before a site
+# takes it: the checkout, the environment, the site's address, the build and
+# the check scripts, the layout check with its options, the Pages artifact
+# and a plain one; then the check alone, on that artifact, as a site that
+# builds elsewhere runs it.
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-site-workflow-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sample:
+    permissions:
+      contents: read
+      pages: read
+    uses: ./.github/workflows/site.yml
+    with:
+      library: .
+      submodules: false
+      address: preview
+      env: '{"SAMPLE_NOTE": "a value with a \" quote, and a newline\nEOF"}'
+      setup: |
+        test "$SAMPLE_NOTE" = "$(printf 'a value with a " quote, and a newline\nEOF')"
+        echo "SAMPLE_BUILT=1" >> "$GITHUB_ENV"
+      build: python3 tools/sample_site.py build
+      check: |
+        test "$SAMPLE_BUILT" = 1
+        test -n "$SITE_URL" -a -n "$SITE_BASE"
+        test -f build/index.html -a -f build/fr/index.html
+      skip_page: '["nothing/*"]'
+      wide: '["", "inner/"]'
+      axe_english: true
+      gate: echo "publish=true" >> "$GITHUB_OUTPUT"
+      pages_artifact: true
+      artifact_name: sample-site
+      artifact_retention_days: 1
+
+  # The check alone, on the artifact the first job kept.
+  layout-only:
+    needs: sample
+    permissions:
+      contents: read
+      pages: read
+    uses: ./.github/workflows/site.yml
+    with:
+      library: .
+      submodules: false
+      download_artifact: sample-site
+      download_path: build
+      axe_english: true
+      wide: '[""]'
+
+  # The artifact is there, and the output names it.
+  output:
+    needs: sample
+    runs-on: ubuntu-26.04
+    timeout-minutes: 2
+    steps:
+      - env:
+          ID: ${{ needs.sample.outputs.pages_artifact_id }}
+        run: test -n "$ID" || { echo "::error::no Pages artifact id"; exit 1; }

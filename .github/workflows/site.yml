@@ -1,0 +1,410 @@
+name: site (reusable)
+
+# The part of a Boréale site's workflow that every site shares: check the
+# repository out with its submodules, build the site, check it, run
+# library/boreale-site's layout check (Playwright and axe-core, pinned here
+# once) and keep the built folder as a GitHub Pages artifact. Deploying stays
+# in the caller (README.md, "Reusable workflow").
+#
+#   jobs:
+#     build:
+#       permissions: { contents: read, pages: read }
+#       uses: JigSawFr/boreale-site/.github/workflows/site.yml@<sha> # v1.0.0
+#       with:
+#         build: python3 tools/build_site.py build
+#         check: python3 tools/check_site.py build
+#
+# A called workflow runs in the caller's repository: `actions/checkout` below
+# checks out the caller (this file is not on disk), and the layout check is
+# the one in the caller's `library/boreale-site` submodule.
+#
+# Every phase after the checkout is optional: `build` empty and
+# `download_artifact` set is a check of a folder another job built (the
+# simulators' sites); `layout: false` is a build without the browser.
+# `concurrency` is the caller's (its group depends on the event, and the same
+# group in both workflows would cancel the run itself).
+on:
+  workflow_call:
+    inputs:
+      # --- the checkout
+      library:
+        description: "Where the caller has boreale-site (its tools/site_layout.py): the submodule's path, `.` in boreale-site itself."
+        type: string
+        default: library/boreale-site
+      ref:
+        description: "The ref to check out; empty is the event's own."
+        type: string
+        default: ""
+      submodules:
+        description: "Check the submodules out (library/boreale-site, one level)."
+        type: boolean
+        default: true
+      library_only:
+        description: "Of the submodules, check out `library` only (a job that only checks a folder another job built)."
+        type: boolean
+        default: false
+      fetch_depth:
+        description: "Commits to fetch; 0 is all the history and tags."
+        type: number
+        default: 1
+      filter:
+        description: "A partial clone filter (`blob:none`), empty for none."
+        type: string
+        default: ""
+      persist_credentials:
+        description: "Keep the token in the checkout's git config (the build runs git against the remote)."
+        type: boolean
+        default: false
+      runs_on:
+        description: "The runner."
+        type: string
+        default: ubuntu-26.04
+      timeout_minutes:
+        description: "The job's timeout."
+        type: number
+        default: 20
+      # --- before the build
+      download_artifact:
+        description: "The name of an artifact of this run to download first (the demo or simulator another job built, or the site itself)."
+        type: string
+        default: ""
+      download_path:
+        description: "Where it goes."
+        type: string
+        default: "."
+      apt:
+        description: "Packages for apt-get, separated by spaces."
+        type: string
+        default: ""
+      env:
+        description: "A JSON object of environment variables for every command below, `{\"SITE_API\": \"build_api\"}`. Built with toJSON() when a value comes from the event."
+        type: string
+        default: "{}"
+      github_token:
+        description: "Give setup, build, check and gate the job's read-only token as GITHUB_TOKEN."
+        type: boolean
+        default: false
+      address:
+        description: "The site's address, as GitHub Pages serves it: `url` sets SITE_URL and SITE_NOINDEX (1 for a pull request), `preview` also SITE_BASE, MAIN_SITE and a pull request's pr-<number>/. Needs `pages: read`. Empty sets nothing."
+        type: string
+        default: ""
+      setup:
+        description: "A script run before the build, after the downloads and apt (a data branch cloned, an API reference built)."
+        type: string
+        default: ""
+      # --- build and check
+      build:
+        description: "The script that builds the site into `directory`; empty builds nothing."
+        type: string
+        default: ""
+      check:
+        description: "The script that checks the built site (links, catalogs, CSP; anything that needs the folder), run after the build and before the layout check."
+        type: string
+        default: ""
+      directory:
+        description: "The built site's folder."
+        type: string
+        default: build
+      # --- the layout check (site_layout.py); the lists are JSON arrays of strings
+      layout:
+        description: "Run library/boreale-site's layout check (Playwright and axe) on `directory`."
+        type: boolean
+        default: true
+      skip:
+        description: "--skip: folders not walked, `[\"simulator\"]`."
+        type: string
+        default: "[]"
+      skip_page:
+        description: "--skip-page: pages left out, by glob, `[\"404.html\"]`."
+        type: string
+        default: "[]"
+      extra:
+        description: "--extra: pages opened besides those found, `[\"explore/#steam/popular\"]`."
+        type: string
+        default: "[]"
+      extra_if:
+        description: "--extra-if: the folder that must be built for `extra` to be opened."
+        type: string
+        default: ""
+      wait:
+        description: "--wait: `load` or `networkidle`."
+        type: string
+        default: load
+      wide:
+        description: "--wide: the pages the four other screens open too, `[\"\", \"docs/config/\"]` (\"\" is the home page). Empty: every screen opens every page."
+        type: string
+        default: "[]"
+      axe_english:
+        description: "--axe-english: axe on the English pages and each language's home page only."
+        type: boolean
+        default: false
+      jobs:
+        description: "--jobs: pages open at once; 0 is the check's own (6)."
+        type: number
+        default: 0
+      layout_timeout_minutes:
+        description: "The layout check's timeout, apart from installing its browser."
+        type: number
+        default: 10
+      # --- after the checks
+      gate:
+        description: "A script that decides whether the Pages artifact is kept: it writes `publish=true` to $GITHUB_OUTPUT to keep it. Empty keeps it. Run only when `pages_artifact` is true."
+        type: string
+        default: ""
+      pages_artifact:
+        description: "Keep `directory` as the Pages artifact (`github-pages`) that actions/deploy-pages publishes."
+        type: boolean
+        default: false
+      include_hidden:
+        description: "Include hidden files (.nojekyll, .well-known/) in the artifacts."
+        type: boolean
+        default: true
+      artifact_name:
+        description: "Also keep `directory` as a plain artifact of this name (a pull request's preview); empty for none."
+        type: string
+        default: ""
+      artifact_retention_days:
+        description: "Its retention."
+        type: number
+        default: 14
+    outputs:
+      pages_artifact_id:
+        description: "The Pages artifact's id; empty when none was kept (not asked for, or the gate said no)."
+        value: ${{ jobs.site.outputs.pages_artifact_id }}
+
+permissions:
+  contents: read
+
+env:
+  # Playwright, pinned, for the layout check: its Python package, and the
+  # Chromium of that version.
+  PLAYWRIGHT_VERSION: 1.64.0
+  # axe-core, for the accessibility check: its npm package, checked against
+  # the hash it had when pinned.
+  AXE_VERSION: 4.13.0
+  AXE_SHA256: 096912f6e77b4b695fc9304b7be65091db42d98de054da674ae222a11cb33f70
+
+jobs:
+  site:
+    runs-on: ${{ inputs.runs_on }}
+    timeout-minutes: ${{ inputs.timeout_minutes }}
+    # The caller must grant at least these: a called workflow cannot raise
+    # its caller's token. `pages: read` is for the site's address.
+    permissions:
+      contents: read
+      pages: read
+    outputs:
+      pages_artifact_id: ${{ steps.pages.outputs.artifact_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          submodules: ${{ inputs.submodules && !inputs.library_only }}
+          fetch-depth: ${{ inputs.fetch_depth }}
+          filter: ${{ inputs.filter }}
+          persist-credentials: ${{ inputs.persist_credentials }}
+      - name: The library
+        if: inputs.submodules && inputs.library_only
+        env:
+          LIBRARY: ${{ inputs.library }}
+        run: git submodule update --init --depth 1 -- "$LIBRARY"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: inputs.download_artifact != ''
+        with:
+          name: ${{ inputs.download_artifact }}
+          path: ${{ inputs.download_path }}
+      - name: Packages
+        if: inputs.apt != ''
+        env:
+          PACKAGES: ${{ inputs.apt }}
+        run: |
+          sudo apt-get update -y -q
+          # shellcheck disable=SC2086 # a list of packages, split on purpose
+          sudo apt-get install -y -q --no-install-recommends $PACKAGES
+      # The caller's environment, written for the steps below. A value may be
+      # anything (a pull request's title): the file's delimiter is random.
+      - name: Environment
+        if: inputs.env != '{}'
+        env:
+          VARIABLES: ${{ inputs.env }}
+        run: |
+          python3 -I - <<'PY'
+          import json, os, re, secrets, sys
+          try:
+              variables = json.loads(os.environ["VARIABLES"])
+              assert isinstance(variables, dict)
+          except (ValueError, AssertionError):
+              sys.exit("::error::`env` must be a JSON object")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as f:
+              for name, value in variables.items():
+                  if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) or re.match(r"(GITHUB|RUNNER)_", name):
+                      sys.exit(f"::error::`env`: {name!r} is not a variable a workflow may set")
+                  delimiter = "EOF_" + secrets.token_hex(16)
+                  f.write(f"{name}<<{delimiter}\n{'' if value is None else value}\n{delimiter}\n")
+          PY
+      # The site's address, as GitHub Pages serves it: its custom domain when
+      # it has one (Settings › Pages), else <owner>.github.io/<repo>/. A pull
+      # request's build is kept out of search engines; in `preview` mode it is
+      # also built for pr-<number>/. MAIN_SITE: the site, published.
+      - name: The site's address
+        if: inputs.address != ''
+        env:
+          MODE: ${{ inputs.address }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          case "$MODE" in url|preview) ;; *) echo "::error::address is url or preview, not $MODE"; exit 1 ;; esac
+          # No Pages site yet (404): gh prints its error body on stdout, so
+          # nothing of a failed call is kept. https when Pages enforces it,
+          # whatever html_url says meanwhile.
+          if ! pages=$(gh api "repos/$REPO/pages" \
+                         --jq 'if .https_enforced then (.html_url | sub("^http:"; "https:")) else .html_url end' 2>/dev/null); then
+            pages=""
+          fi
+          owner="${REPO%%/*}"
+          pages="${pages:-https://${owner,,}.github.io/${REPO#*/}/}"
+          pages="${pages%/}/"
+          if [ "$MODE" = preview ]; then
+            {
+              echo "MAIN_SITE=$pages"
+              echo "SITE_URL=$pages${PR:+pr-$PR/}"
+              echo "SITE_BASE=/${pages#*://*/}${PR:+pr-$PR/}"
+              echo "SITE_NOINDEX=${PR:+1}"
+            } | tee -a "$GITHUB_ENV"
+          else
+            {
+              echo "SITE_URL=$pages"
+              echo "SITE_NOINDEX=${PR:+1}"
+            } | tee -a "$GITHUB_ENV"
+          fi
+      # The caller's scripts run from a file, never inlined into this one: an
+      # expression in them was already read by the caller.
+      - name: Setup
+        if: inputs.setup != ''
+        env:
+          SCRIPT: ${{ inputs.setup }}
+          GITHUB_TOKEN: ${{ inputs.github_token && github.token || '' }}
+        run: |
+          printf '%s\n' "$SCRIPT" > "$RUNNER_TEMP/setup.sh"
+          bash -e "$RUNNER_TEMP/setup.sh"
+      - name: Build
+        if: inputs.build != ''
+        env:
+          SCRIPT: ${{ inputs.build }}
+          GITHUB_TOKEN: ${{ inputs.github_token && github.token || '' }}
+        run: |
+          printf '%s\n' "$SCRIPT" > "$RUNNER_TEMP/build.sh"
+          bash -e "$RUNNER_TEMP/build.sh"
+      - name: Check
+        if: inputs.check != ''
+        env:
+          SCRIPT: ${{ inputs.check }}
+          GITHUB_TOKEN: ${{ inputs.github_token && github.token || '' }}
+        run: |
+          printf '%s\n' "$SCRIPT" > "$RUNNER_TEMP/check.sh"
+          bash -e "$RUNNER_TEMP/check.sh"
+      - name: The built folder
+        if: inputs.layout || inputs.pages_artifact || inputs.artifact_name != ''
+        env:
+          DIRECTORY: ${{ inputs.directory }}
+        run: test -d "$DIRECTORY" || { echo "::error::No built site in $DIRECTORY"; exit 1; }
+      # Playwright for Python and its Chromium, kept from one run to the next
+      # while PLAYWRIGHT_VERSION stays. The runner in the key: the venv holds
+      # its Python (3.14 on 26.04).
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: inputs.layout
+        with:
+          path: |
+            ~/.cache/ms-playwright
+            ~/.cache/playwright-venv
+          key: playwright-${{ inputs.runs_on }}-${{ env.PLAYWRIGHT_VERSION }}
+      # Its system packages and the browser first, apart: a slow Ubuntu mirror
+      # can take minutes over the fonts alone, which is not the check's time.
+      # Chromium's headless shell alone: it is what a headless launch uses.
+      - name: Playwright
+        if: inputs.layout
+        timeout-minutes: 20
+        run: |
+          venv="$HOME/.cache/playwright-venv"
+          if [ ! -x "$venv/bin/python" ]; then
+            python3 -m venv "$venv"
+            "$venv/bin/pip" install -q "playwright==$PLAYWRIGHT_VERSION"
+          fi
+          sudo "$venv/bin/python" -m playwright install-deps chromium
+          "$venv/bin/python" -m playwright install --only-shell chromium
+      # axe.min.js alone, read out of the package by Python rather than tar.
+      - name: axe-core
+        if: inputs.layout
+        run: |
+          curl -sfL --retry 3 -o "$RUNNER_TEMP/axe.tgz" "https://registry.npmjs.org/axe-core/-/axe-core-$AXE_VERSION.tgz"
+          echo "$AXE_SHA256  $RUNNER_TEMP/axe.tgz" | sha256sum -c --quiet
+          python3 -c 'import sys, tarfile; open(sys.argv[2], "wb").write(tarfile.open(sys.argv[1]).extractfile("package/axe.min.js").read())' \
+            "$RUNNER_TEMP/axe.tgz" "$RUNNER_TEMP/axe.min.js"
+      # No page wider than the screen on phones, a tablet or a desktop, no
+      # target too small to touch, no field iOS zooms into, no script that
+      # throws, nothing axe finds against WCAG 2.2 AA.
+      - name: The site on phones, a tablet and a desktop
+        if: inputs.layout
+        timeout-minutes: ${{ inputs.layout_timeout_minutes }}
+        env:
+          LIBRARY: ${{ inputs.library }}
+          DIRECTORY: ${{ inputs.directory }}
+          SKIP: ${{ inputs.skip }}
+          SKIP_PAGE: ${{ inputs.skip_page }}
+          EXTRA: ${{ inputs.extra }}
+          EXTRA_IF: ${{ inputs.extra_if }}
+          WAIT: ${{ inputs.wait }}
+          WIDE: ${{ inputs.wide }}
+          AXE_ENGLISH: ${{ inputs.axe_english }}
+          JOBS: ${{ inputs.jobs }}
+        run: |
+          export SITE_AXE="$RUNNER_TEMP/axe.min.js"
+          export VENV="$HOME/.cache/playwright-venv"
+          python3 -I - <<'PY'
+          import json, os, sys
+          def strings(name):
+              try:
+                  value = json.loads(os.environ[name] or "[]")
+                  assert isinstance(value, list) and all(isinstance(i, str) for i in value)
+              except (ValueError, AssertionError):
+                  sys.exit(f"::error::{name.lower()} must be a JSON array of strings")
+              return value
+          args = []
+          for flag, name in (("--skip", "SKIP"), ("--skip-page", "SKIP_PAGE"), ("--extra", "EXTRA"), ("--wide", "WIDE")):
+              for item in strings(name):
+                  args += [flag, item]
+          if os.environ["EXTRA_IF"]:
+              args += ["--extra-if", os.environ["EXTRA_IF"]]
+          args += ["--wait", os.environ["WAIT"]]
+          if os.environ["AXE_ENGLISH"] == "true":
+              args.append("--axe-english")
+          if os.environ["JOBS"] not in ("", "0"):
+              args += ["--jobs", os.environ["JOBS"]]
+          python = os.environ["VENV"] + "/bin/python"
+          os.execv(python, [python, "-u", os.environ["LIBRARY"] + "/tools/site_layout.py", os.environ["DIRECTORY"], *args])
+          PY
+      # Whether to keep it: main's site is published unless a scheduled build
+      # made exactly the one served (a script of the caller's).
+      - name: Anything new to publish
+        id: gate
+        if: inputs.pages_artifact && inputs.gate != ''
+        env:
+          SCRIPT: ${{ inputs.gate }}
+          GITHUB_TOKEN: ${{ inputs.github_token && github.token || '' }}
+        run: |
+          printf '%s\n' "$SCRIPT" > "$RUNNER_TEMP/gate.sh"
+          bash -e "$RUNNER_TEMP/gate.sh"
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        id: pages
+        if: inputs.pages_artifact && (inputs.gate == '' || steps.gate.outputs.publish == 'true')
+        with:
+          path: ${{ inputs.directory }}
+          include-hidden-files: ${{ inputs.include_hidden }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: inputs.artifact_name != ''
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ inputs.directory }}
+          include-hidden-files: ${{ inputs.include_hidden }}
+          retention-days: ${{ inputs.artifact_retention_days }}

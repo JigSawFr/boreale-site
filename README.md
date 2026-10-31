@@ -299,6 +299,139 @@ Atlas's `.cards .way` single-column rules (use `.stack`), a `minmax(...)` re-dec
 - Nothing loaded from another site: no inline script or style, the fonts
   served with the site.
 
+## Reusable workflow
+
+`.github/workflows/site.yml` is the part of a site's workflow that every site
+copied: the checkout with its submodules, the build, the checks, the layout
+check (Playwright 1.64.0 and axe-core 4.13.0, pinned here once, axe checked
+against its hash) and the built folder kept as a Pages artifact. A site calls
+it from its own `site.yml`:
+
+```yaml
+jobs:
+  build:
+    permissions: { contents: read, pages: read }   # a called workflow cannot raise them
+    uses: JigSawFr/boreale-site/.github/workflows/site.yml@<sha> # v1.0.0
+    with:
+      build: python3 tools/build_site.py build
+      check: python3 tools/check_site.py build
+      pages_artifact: ${{ github.event_name != 'pull_request' }}
+  deploy:
+    needs: build
+    if: needs.build.outputs.pages_artifact_id != ''
+    runs-on: ubuntu-slim
+    permissions: { pages: write, id-token: write }
+    environment: { name: github-pages, url: "${{ steps.deploy.outputs.page_url }}" }
+    concurrency: { group: pages, cancel-in-progress: false }
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+```
+
+A called workflow runs in the caller's repository: its checkout is the
+caller's and the layout check is the caller's `library/boreale-site`
+(`library:` says where, `.` in this repository). The workflow file is the only
+thing taken from here, so the two move apart: a `uses:` ref and a submodule
+commit. Options are only ever added to the workflow and to `site_layout.py`,
+never changed in meaning; a site that uses an option new in one of them moves
+both.
+
+### What stays in the caller
+
+- **The triggers** (`paths`, `schedule`, `repository_dispatch`, `workflow_run`),
+  the job's `if`, and **`concurrency`**: the group depends on the event, and
+  the same group in both workflows would cancel the run itself.
+- **The deployment** (`actions/deploy-pages`): the `github-pages`
+  environment, `pages: write` and `id-token: write` are one repository's, and
+  a site's previews (PlayGuard, PlayShelf publish pull requests under
+  `pr-<number>/` from a `workflow_run`) deploy differently. It is a job of
+  five lines that finds the artifact the called job kept, in the same run.
+- Whatever builds the site and is not shared: a simulator, Doxygen, a data
+  branch. It goes in `setup`, or in a job of its own whose result the called
+  job downloads (`download_artifact`).
+
+### Inputs
+
+All optional. A list is a JSON array of strings in a string:
+`wide: '["", "docs/config/"]'` (`""` is the home page).
+
+| Input | Default | What |
+|---|---|---|
+| `library` | `library/boreale-site` | Where `tools/site_layout.py` is in the caller. |
+| `ref`, `submodules`, `library_only`, `fetch_depth`, `filter`, `persist_credentials` | `""`, `true`, `false`, `1`, `""`, `false` | The checkout (`library_only`: of the submodules, only `library`; `fetch_depth: 0` is the history and tags; `filter: blob:none` skips old blobs). |
+| `runs_on`, `timeout_minutes` | `ubuntu-26.04`, `20` | The runner and the job's timeout. |
+| `download_artifact`, `download_path` | `""`, `.` | An artifact of this run to download first: a demo or simulator another job built, or the site itself for a check alone. |
+| `apt` | `""` | Packages for `apt-get install`, separated by spaces. |
+| `env` | `{}` | A JSON object of variables for every script below. A value from the event goes through `toJSON()`: `env: ${{ format('{{"TITLE": {0}}}', toJSON(github.event.pull_request.title)) }}`. `GITHUB_*` and `RUNNER_*` names are refused. |
+| `github_token` | `false` | The job's read-only token as `GITHUB_TOKEN` in `setup`, `build`, `check` and `gate` (releases read without the API's anonymous limit). |
+| `address` | `""` | `url` sets `SITE_URL` and `SITE_NOINDEX` (a pull request's build is `1`) from the Pages API (custom domain, else `<owner>.github.io/<repo>/`); `preview` also `SITE_BASE`, `MAIN_SITE` and `pr-<number>/` for a pull request. |
+| `setup`, `build`, `check` | `""` | Scripts, in that order, each a file run by `bash -e` in the checkout: they are never inlined into the workflow, so an expression in them was read by the caller. `check` is for what needs the built folder (links, catalogs, CSP, a conformance suite). |
+| `directory` | `build` | The built site. |
+| `layout` | `true` | The layout check on `directory`. |
+| `skip`, `skip_page`, `extra`, `wide` | `[]` | `--skip`, `--skip-page`, `--extra`, `--wide` (above). |
+| `extra_if`, `wait`, `axe_english`, `jobs` | `""`, `load`, `false`, `0` | `--extra-if`, `--wait`, `--axe-english`, `--jobs` (0: the check's own). |
+| `layout_timeout_minutes` | `10` | The check's timeout, apart from installing its browser (20). |
+| `pages_artifact` | `false` | Keep `directory` as the Pages artifact. |
+| `gate` | `""` | A script that writes `publish=true` to `$GITHUB_OUTPUT` to keep the Pages artifact (a scheduled build whose site is the one served says nothing). Run only when `pages_artifact` is true. |
+| `include_hidden` | `true` | `.nojekyll` and `.well-known/` in the artifacts. |
+| `artifact_name`, `artifact_retention_days` | `""`, `14` | Also keep `directory` as a plain artifact (a pull request's preview). |
+
+Output: `pages_artifact_id`, empty when no Pages artifact was kept. A deploy
+job tests it, so a pull request, a skipped gate and a build with
+`pages_artifact: false` all end the same way.
+
+Python is the runner's `python3` (3.14 on `ubuntu-26.04`): the sites' tools
+use the standard library and the Markdown and YAML modules `apt` installs,
+which a `setup-python` would hide. Node is not needed here; a site that takes
+screenshots with it installs it in its own job.
+
+### A site that builds elsewhere
+
+PlayGuard, PlayShelf and Aurore build a simulator or a demo that takes
+minutes. Their job stays; what is shared is the check, in a job that
+downloads what the first one kept:
+
+```yaml
+  layout:
+    needs: build
+    permissions: { contents: read, pages: read }
+    uses: JigSawFr/boreale-site/.github/workflows/site.yml@<sha> # v1.0.0
+    with:
+      library_only: true
+      download_artifact: site
+      download_path: out
+      directory: out
+      skip: '["simulator"]'
+      skip_page: '["404.html"]'
+      axe_english: true
+```
+
+### Moving a site to it
+
+1. In the site's `site.yml`, replace the steps the sections above name by one
+   `uses:` job; keep the triggers, `concurrency`, the job's `if` and the
+   deploy; grant `pages: read` to the job (the called job asks for it).
+2. The job's check run is named `<job> / site`. Nothing in the sites'
+   rulesets requires a check named after these jobs (2026-10-31: PlayGuard
+   requires `host-tests`, `desktop-smoke`, `conventional-title`, `switch`);
+   look again before moving a job that is required.
+3. `workflow_run` watchers name the caller's workflow, which does not change.
+
+### The ref
+
+Pin by commit, with the version in a comment, as every action in the sites'
+workflows: `@3f2a… # v1.0.0`. Tags are `vX.Y.Z`, cut from main when the
+workflow's behaviour changes and never moved; there is no floating `v1`
+(a change nobody reviewed in the site's own pull request is how a check
+starts failing in seven places at once). Dependabot's `github-actions`
+ecosystem updates a reusable workflow's `uses:` as it does an action's: the
+SHA and the version comment together, one pull request per site, each run by
+the site's own checks. Add it to the site's `.github/dependabot.yml` (the
+`gitsubmodule` entry for `library/boreale-site` is another pull request, on
+its own schedule). The library's own CI runs `site.yml` on the sample site
+(`test-site-workflow.yml`), so a tag is cut from a main whose workflow
+passed.
+
 ## Changing it
 
 `python3 -m unittest discover -s tests` before a pull request. A change here
