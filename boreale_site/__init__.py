@@ -158,7 +158,9 @@ def check_catalogs(own: Path, optional: dict = None) -> list:
     """What is wrong with a site's catalogs (`own`) and the common ones: each
     with en-US.json's keys, none empty, the same {placeholders} and <em> as
     English's, no common key in a site's. `optional` gives, by language, the
-    keys it may leave out (fr.json's legal_translation on boreale.dev)."""
+    keys it may leave out or empty (fr.json's legal_translation on
+    boreale.dev; en-US.json's note that a page is in English on Aurore, shown
+    in the other languages alone)."""
     optional = optional or {}
     first = CODES[0]
     errors = []
@@ -174,8 +176,9 @@ def check_catalogs(own: Path, optional: dict = None) -> list:
                 errors.append(f"{where}/{code}.json: {key} is not in {first}.json")
             for key, text in catalog.items():
                 if not str(text).strip():
-                    errors.append(f"{where}/{code}.json: {key} is empty")
-                elif key in english:
+                    if key not in optional.get(code, ()):
+                        errors.append(f"{where}/{code}.json: {key} is empty")
+                elif key in english and str(english[key]).strip():
                     if sorted(re.findall(r"\{[a-z_]+\}", english[key])) != sorted(re.findall(r"\{[a-z_]+\}", text)):
                         errors.append(f"{where}/{code}.json: {key}'s placeholders differ from English's")
                     if ("<em>" in english[key]) != ("<em>" in text):
@@ -359,10 +362,16 @@ class Site:
 
         return LINK_OUT.sub(one, text)
 
-    def audience(self, root: str) -> str:
-        """Umami's tracker, counting only from this site's own host."""
+    def audience(self, root: str, **data) -> str:
+        """Umami's tracker, counting only from this site's own host. `data`:
+        its other settings, each a data- attribute (before_send="name" for
+        data-before-send, a function of the page that filters what is sent);
+        the site and its host are not among them."""
+        if {"website_id", "domains"} & set(data):
+            raise ValueError("audience: the website and its host are boreale-site's")
+        extra = "".join(f' data-{key.replace("_", "-")}="{attribute(str(value))}"' for key, value in data.items())
         return (f'<script src="{root}assets/umami.js" defer data-website-id="{UMAMI_WEBSITE}" '
-                f'data-domains="{self.host}"></script>')
+                f'data-domains="{self.host}"{extra}></script>')
 
     # -- The header's menus.
 
