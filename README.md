@@ -172,13 +172,12 @@ footer = site.footer(language, catalog, root,
   `sky(home=True, canvas=False)`. The veils and stars under a home's hero
   (`.sky-home:not(.no-veils) ~ main`) are left out with `veils=False` (the page not found). Nothing moves with `prefers-reduced-motion`, or while
   the sky is out of view.
-- **`Site.footer(language, catalog, root, columns, about, fine, brand, support, legal)`**: the
+- **`Site.footer(language, catalog, root, columns, about, fine, brand, support)`**: the
   project (mark, name, `about` lines, "A Boréale project"), the site's own `columns`
   (`[(heading, [(text, href) or (text, href, {attributes})])]`, texts ready for the page;
   the attributes (lang, hreflang, rel, class) go through the rules for links out), Boréale's sites **read from
   `sites.json`** (the others, in its order, and the legal notice, so a site added or ha
-  appears everywhere), the support (`support=False` to leave it out), the fine print. `legal=(text, href)` replaces
-  the legal notice's link (boreale.dev's) with the site's own, by the same rules for links out.
+  appears everywhere), the support (`support=False` to leave it out), the fine print.
 - `Site.skip(catalog)` is the skip link; `Site.anchor(href, label, medium, css, current)`
   one link by the same rules.
 - Classes `chrome.css` provides: `.sky`, `.sky-home`, `.top`, `.brand`, `.nav`,
@@ -214,8 +213,7 @@ in a browser; `tools/site_layout.py` (with axe) runs on the sample as on a site:
 3. Delete from `site.css`: the tokens `--night-2`, `--dusk`, `--link`, `--bg`... `--gutter-*`, the
    reset (`*`, `html`, `body`, `a`, `h1-h3`, `:focus-visible`, `.sr`, `.skip`), `.sky*`, `.top`,
    `.brand`, `.nav*`, the 1080px and 860px header rules, `.eyebrow`, `.button*`, `.actions`,
-   the pill (`.release-pill`/`.pill`, as `.pill-eyebrow`), the `.section*` **rules** (the class stays in the markup:
-   `chrome.js` reveals a home's `main > .section` and `main > .band`), `.band`, `.cards`/`.card`
+   the pill (`.release-pill`/`.pill`, as `.pill-eyebrow`), `.section*`, `.band`, `.cards`/`.card`
    (base, glow, reveal), `.footer*`, the view-transition and reveal blocks.
 4. Delete from `site.js`: the sky canvas, the nav's fading edge, the cards' pointer, the reveal.
 5. Delete from the site's catalogs `skip`, the legal/support/"part of Boréale" texts that
@@ -247,39 +245,6 @@ in a browser; `tools/site_layout.py` (with axe) runs on the sample as on a site:
 - **Footer**: its columns cannot be wider than the screen (`min-width: 0`, long words break; one
   column under 420px). `tools/chrome_layout.py <site> --languages` opens every page in the fifteen
   languages at 320px and 390px to keep it so.
-
-### Layout notes (v4.2)
-
-What the migrations asked for; every default is PlayGuard's look, unchanged, and a site's own
-override of an earlier rule keeps working (a rule that became redundant is just dead).
-
-- **Cards**: `.card.stack` keeps a card a stack on a phone (a card that ends in a `<pre>`: Atlas's
-  ways); `.card.below` puts the text under the icon and title, the whole width (ha); `--cards-min`
-  on `:root` or `.cards` is the columns' minimum width (250px; Lantern 300px). The compact rules'
-  specificity is unchanged.
-- **`.section-head`** caps only its lead paragraph at 64ch; the title takes the width it needs.
-- **Space above the footer**: 88px, `--footer-gap: 0` on `:root` for a site whose last section carries
-  its own space (ha, Aurore) instead of a `.footer { margin-top: 0 }`. `.section.narrow` still ends
-  with 80px (PlayGuard's changelog: 168px with the footer's). A `.band` that opens a `.wrap` or a
-  `.section` has no top margin: the container's padding is the space.
-- **Text**: `.eyebrow` and the pill have `line-height: var(--eyebrow-leading, normal)` (`normal` is
-  PlayGuard's; `--eyebrow-leading: 1.6` for a site whose text is). An eyebrow in a band takes
-  `--band-eyebrow` (the text's grey as PlayGuard's; `var(--aurora)` for Aurore). h1-h3 carry the
-  family's weight, tracking and line height everywhere, unstyled headings included: set your own on
-  a heading that wants others. An `h4` inside a `.section`, `.section-head`, `.card` or `.band` has
-  the same look (zero specificity; outside them, a document's h4 stays the browser's);
-  `reset-margins` covers h4.
-- **`tools/chrome_layout.py`**: `--no-cta` for a header without a pill (boreale.dev); with
-  `--languages` a page a language does not have (a root `404.html`, an English-only page) is
-  skipped and listed, not a crash; the 88px rhythm is the first section's own distance to its first
-  element, whether or not it has an eyebrow.
-
-What a site can delete from its own CSS: its `.footer { margin-top: 0 }` (for `:root { --footer-gap: 0 }`),
-`.section-head { max-width: none }`, `.card:has(> .icon) > p { grid-column: 1 / -1 }` (use `.below`),
-Atlas's `.cards .way` single-column rules (use `.stack`), a `minmax(...)` re-declaration of `.cards`
-(`--cards-min`), `.wrap > .band { margin-top: 0 }`, `.eyebrow { line-height: 1.6 }` and the pill's
-(`--eyebrow-leading`), `.band .eyebrow { color }` (`--band-eyebrow`), `h4 { margin: 0 }` under
-`reset-margins`. Aurore also its phone rules for cards and band, to adopt the common look.
 
 ## The rules it carries
 
