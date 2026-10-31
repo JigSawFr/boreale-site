@@ -17,6 +17,9 @@ pages, texts, `site.css` and `site.js`.
 | `i18n/<language>.json` | The texts every site uses (the menu of Boréale's sites, the language button), in the fifteen languages. A site's catalog does not repeat them: the build stops if it does. |
 | `assets/` | Copied into each built site's `assets/`: the fonts (SIL Open Font License, the flags' CC-BY 4.0), each site's mark (`marks/`), Umami's tracker (`umami.js`), `lang.js`, `boreale.css` (the brand's colours and fonts, the language menu, the menu of Boréale's sites) and `boreale.js` (where the two menus open). A site that has one of them too stops the build. |
 | `boreale_site/` | Python's standard library only: the languages (English as `en-US`, the consoles' and the apps' code), flags and dates, `fill()`, the two menus, the links out and their UTM tags (`Site`, `untagged()` for Markdown served as it is), the projects' latest versions from boreale.dev's `versions.json` (`latest_versions()`, `schema` 1), the common assets and catalogs; `boreale_site.check`, the checks every built site passes. |
+| `assets/chrome.css`, `assets/chrome.js` | v4's page chrome, PlayGuard's look: the header, the sky, the container and the sections' rhythm, buttons, the pill, the card, the footer (below). Loaded after `boreale.css`; a site that does not load them is untouched. |
+| `tools/sample_site.py`, `tools/sample/` | The reference pages (a home and an inner page, in the fifteen languages) built with the helpers. Not copied to a site. |
+| `tools/chrome_layout.py` | The chrome's measures in a browser (72px header, two rows, 88px rhythm, 1180px) on the sample or a built site. |
 | `tools/site_layout.py` | Each page on phones, a tablet and a desktop (Playwright), and axe-core against WCAG 2.2 AA (below). |
 
 ## In a site
@@ -119,6 +122,100 @@ many pages chooses fewer:
 | `--jobs <n>` | Pages open at once (`SITE_LAYOUT_JOBS`, 6 by default). |
 
 `PLAYWRIGHT_CHROMIUM=<path>` points at a browser of its own.
+
+## The page chrome (v4)
+
+An addition: a site that loads neither file builds as before. A site that does
+gives its content and nothing of the header, sky, buttons, cards or footer.
+
+```python
+header = site.header(language, catalog, root, path,
+                     links=[("nav_features", f"{home}#features"), ("nav_docs", f"{home}docs/")],
+                     cta=("nav_try", f"{home}simulator/"),      # the pill, in the aurora's gradient
+                     github="https://github.com/JigSawFr/PlayGuard",
+                     current="nav_docs")                          # aria-current="page" on that link
+footer = site.footer(language, catalog, root,
+                     columns=[(catalog["docs_title"], [(catalog["doc_start"], f"{home}docs/")])],
+                     about=[catalog["footer_license"]], fine=catalog["footer_nintendo"])
+```
+
+```html
+<link rel="stylesheet" href="{{root}}assets/boreale.css">
+<link rel="stylesheet" href="{{root}}assets/chrome.css">
+<link rel="stylesheet" href="{{root}}assets/site.css">
+<script src="{{root}}assets/chrome.js" defer></script>
+...
+<body>
+{{skip}}                     <!-- site.skip(catalog) -->
+{{sky}}                      <!-- site.sky(home=True) opens <div class="sky sky-home"> and its canvas -->
+  {{header}}
+  {{hero}}
+</div>
+<main id="main">...</main>
+{{footer}}
+```
+
+- **`Site.header(language, catalog, root, path, links, cta, github, current, label, latest, brand, home)`**:
+  the name and the menu of Boréale's sites (`switcher()`), the nav, the languages
+  (`languages()`). `links` are `(catalog key, href)`, `cta` the same, `github` an
+  address. `label` is the nav's accessible name (the site's name). Every link goes
+  through `links_out()`: UTM tags to our sites (`utm_medium=nav`), `noreferrer` or
+  `strict-origin` as the rule says; calling `links_out()` on the page again changes
+  nothing. A phone gets two rows, the links on their own with a fading edge, the pill
+  first and GitHub left to the footer (`chrome.css`, `chrome.js`).
+- **`Site.sky(home=False, canvas=True)`**: the sky's opening tag, which the page closes
+  after the hero. The home page has the aurora (canvas, `chrome.js`) and the night's
+  veils and stars under it. **Any other page opts out of the canvas** with
+  `sky()` (the quieter sky, a line under it); a home that must stay still takes
+  `sky(home=True, canvas=False)`. Nothing moves with `prefers-reduced-motion`, or while
+  the sky is out of view.
+- **`Site.footer(language, catalog, root, columns, about, fine, brand, support)`**: the
+  project (mark, name, `about` lines, "A Boréale project"), the site's own `columns`
+  (`[(heading, [(text, href)])]`, texts ready for the page), Boréale's sites **read from
+  `sites.json`** (the others, in its order, and the legal notice, so a site added or ha
+  appears everywhere), the support (`support=False` to leave it out), the fine print.
+- `Site.skip(catalog)` is the skip link; `Site.anchor(href, label, medium, css, current)`
+  one link by the same rules.
+- Classes `chrome.css` provides: `.sky`, `.sky-home`, `.top`, `.brand`, `.nav`,
+  `.nav-cta`, `.nav-gh`, `.settings`, `.wrap`, `.section` (`.narrow`), `.section-head`,
+  `.eyebrow`, `.lede`, `.pill-eyebrow`, `.actions`, `.button` (`.primary`), `.band`,
+  `.cards`/`.card` (with `.icon`, the pointer glow, the reveal), `.footer`, `.fine`,
+  `.sr`, `.skip`, and the tokens (`--bg`, `--surface`, `--text`, `--muted`, `--line`,
+  `--accent`, `--gutter-l/r`, `--edge-l/r`, `--content`). What stays in a site's
+  `site.css`: its hero, its mock visuals, its documentation, cards of its own kind
+  (featured, small, with a screen), and any accent of its own.
+- Texts: `chrome_skip`, `chrome_legal`, `chrome_support`, `chrome_part_of` are common
+  (`i18n/`, fifteen languages); a catalog that has one stops the build.
+
+`check.pages(..., chrome=True, bare=(), cta=True)` keeps a built page to it: one
+`header.top` with the name's menu (popover), one `nav.nav` with an `aria-label`, the
+pill (`cta=False`: at most one) before GitHub and after the page's links, at most one
+link of the row `aria-current`, one site and one language (the page's `<html lang>`)
+marked in the menus, the footer linking to every other site of `sites.json`, `chrome.css`
+and `chrome.js` loaded, no `canvas#sky` without `.sky-home`. `bare` are globs of pages
+without them (a simulator's). `tools/chrome_layout.py <site-dir> [page...]` measures it
+in a browser; `tools/site_layout.py` (with axe) runs on the sample as on a site:
+
+    python3 tools/sample_site.py /tmp/sample && python3 tools/site_layout.py /tmp/sample && python3 tools/chrome_layout.py /tmp/sample
+
+### Moving a site to the chrome
+
+1. `git submodule update --remote library/boreale-site`; add `chrome.css` after `boreale.css`
+   and `chrome.js` (`defer`) to the template; the site's own `chrome.css`/`chrome.js`, if any,
+   stop the build (`copy_assets`).
+2. Replace the template's skip link, sky, `<header>` and `<footer>` with `site.skip()`,
+   `site.sky()`, `site.header()`, `site.footer()`; the class `nav-try` becomes `nav-cta`,
+   the home's `body.home` selectors (`.home main`) are `.sky-home ~ main`, `.wrap` stays.
+3. Delete from `site.css`: the tokens `--night-2`, `--dusk`, `--link`, `--bg`... `--gutter-*`, the
+   reset (`*`, `html`, `body`, `a`, `h1-h3`, `:focus-visible`, `.sr`, `.skip`), `.sky*`, `.top`,
+   `.brand`, `.nav*`, the 1080px and 860px header rules, `.eyebrow`, `.button*`, `.actions`,
+   the pill (`.release-pill`/`.pill`, as `.pill-eyebrow`), `.section*`, `.band`, `.cards`/`.card`
+   (base, glow, reveal), `.footer*`, `.fine`, the view-transition and reveal blocks.
+4. Delete from `site.js`: the sky canvas, the nav's fading edge, the cards' pointer, the reveal.
+5. Delete from the site's catalogs `skip`, the legal/support/"part of Boréale" texts that
+   `chrome_*` replace, and the site's hand-written list of Boréale's sites in the footer.
+6. In `tools/check_site.py`: `check.pages(..., chrome=True)`; drop the checks of the header's
+   structure it carried.
 
 ## The rules it carries
 

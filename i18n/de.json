@@ -12,5 +12,9 @@
   "sites_aurore": "Die Oberflächenbibliothek dahinter",
   "sites_atlas": "Eine Karte aller Spiele, auf jeder Plattform",
   "sites_lantern": "Das Protokoll zwischen Servern und Konsolen",
-  "sites_ha": "Deine Homebrews in Home Assistant"
+  "sites_ha": "Deine Homebrews in Home Assistant",
+  "chrome_skip": "Zum Inhalt springen",
+  "chrome_legal": "Datenschutz und Impressum",
+  "chrome_support": "Das Projekt unterstützen",
+  "chrome_part_of": "Ein Boréale-Projekt"
 }

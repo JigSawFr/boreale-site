@@ -12,5 +12,9 @@
   "sites_aurore": "它們背後的介面函式庫",
   "sites_atlas": "所有平台上所有遊戲的地圖",
   "sites_lantern": "伺服器與主機之間的協定",
-  "sites_ha": "Home Assistant 中的自製軟體"
+  "sites_ha": "Home Assistant 中的自製軟體",
+  "chrome_skip": "跳到內容",
+  "chrome_legal": "隱私與法律聲明",
+  "chrome_support": "支持本專案",
+  "chrome_part_of": "Boréale 專案"
 }

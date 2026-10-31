@@ -12,5 +12,9 @@
   "sites_aurore": "それらを支える UI ライブラリ",
   "sites_atlas": "すべてのプラットフォームの、すべてのゲームの地図",
   "sites_lantern": "サーバーとゲーム機をつなぐプロトコル",
-  "sites_ha": "Home Assistant の中の自作ソフト"
+  "sites_ha": "Home Assistant の中の自作ソフト",
+  "chrome_skip": "本文へ移動",
+  "chrome_legal": "プライバシーと法的情報",
+  "chrome_support": "プロジェクトを支援",
+  "chrome_part_of": "Boréale のプロジェクト"
 }

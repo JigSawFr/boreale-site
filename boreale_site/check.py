@@ -22,8 +22,16 @@ tools/check_site.py:
   (<meta http-equiv="refresh">) runs nothing and needs neither, but sends no
   referrer either;
 - no real e-mail address: contact goes through the repositories' issues;
-- the data in pages (JSON, by type) reads.
+- the data in pages (JSON, by type) reads;
+- with `chrome=True` (a site on v4's header and footer, assets/chrome.css):
+  the header of Site.header() on every page, with its name and menu of
+  Boréale's sites, its row of links, its pill, its languages, at most one
+  link marked aria-current in the row, one site and one language marked in
+  the menus (the language of <html lang>); the footer of Site.footer(), which
+  links to every other site of sites.json; chrome.css and chrome.js loaded; no
+  canvas#sky outside a home's sky. A site can no longer drift from the rest.
 """
+import fnmatch
 import json
 import os
 import re
@@ -77,6 +85,9 @@ def policy_problem(content: str) -> str:
     return "its policy has no connect-src for Umami"
 
 
+VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
+
+
 class Page(HTMLParser):
     def __init__(self, site: Site):
         super().__init__()
@@ -87,9 +98,86 @@ class Page(HTMLParser):
         self.redirect = False
         self.policy = None
         self.tracker = False
+        # v4's chrome: what the header, the footer and the sky are made of.
+        self.stack = []
+        self.lang = None
+        self.headers = 0
+        self.header = {"switch": False, "sites": False, "nav": 0, "nav_label": False, "nav_links": [],
+                       "sites_current": 0, "langs": False, "lang_button": False, "langs_current": [], "parts": []}
+        self.footers = 0
+        self.footer_links = []
+        self.sky_home = False
+        self.canvas = False
+        self.chrome_css = False
+        self.chrome_js = False
+
+    def context(self, tag, a):
+        """What an element is in the chrome's markup, or ''."""
+        classes = (a.get("class") or "").split()
+        if tag == "header" and "top" in classes:
+            return "header"
+        if tag == "footer" and "footer" in classes:
+            return "footer"
+        if "header" in {c for _, c in self.stack}:
+            if a.get("id") == "sites":
+                return "sites"
+            if a.get("id") == "languages":
+                return "langs"
+            if tag == "div" and "switcher" in classes:
+                return "switcher"
+            if tag == "nav" and "nav" in classes:
+                return "nav"
+            if tag == "div" and "settings" in classes:
+                return "settings"
+        return ""
+
+    def chrome(self, tag, a, kind):
+        inside = {c for _, c in self.stack}
+        h = self.header
+        if kind == "header":
+            self.headers += 1
+        elif kind == "footer":
+            self.footers += 1
+        elif kind == "nav":
+            h["nav"] += 1
+            h["nav_label"] = bool((a.get("aria-label") or "").strip())
+        elif kind in ("switcher", "settings"):
+            h["parts"].append(kind)
+        elif kind == "sites":
+            h["sites"] = "popover" in a
+        elif kind == "langs":
+            h["langs"] = "popover" in a
+        if "header" in inside:
+            classes = (a.get("class") or "").split()
+            if tag == "button" and "switch" in classes and "brand" in classes:
+                h["switch"] = True
+            if tag == "button" and "lang-button" in classes:
+                h["lang_button"] = True
+            if tag == "a" and "nav" in inside:
+                h["nav_links"].append((classes, "aria-current" in a))
+            if tag == "a" and "sites" in inside and "aria-current" in a:
+                h["sites_current"] += 1
+            if tag == "a" and "langs" in inside and "aria-current" in a:
+                h["langs_current"].append(a.get("lang"))
+        if tag == "a" and "footer" in inside and a.get("href"):
+            self.footer_links.append(a["href"])
+        if "sky-home" in (a.get("class") or "").split():
+            self.sky_home = True
+        if tag == "canvas" and a.get("id") == "sky":
+            self.canvas = True
+        if tag == "link" and a.get("rel") == "stylesheet" and (a.get("href") or "").endswith("assets/chrome.css"):
+            self.chrome_css = True
+        if tag == "script" and (a.get("src") or "").endswith("assets/chrome.js"):
+            self.chrome_js = True
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
+        if tag == "html":
+            self.lang = a.get("lang")
+        kind = self.context(tag, a)
+        self.chrome(tag, a, kind)
+        if tag not in VOID:
+            self.stack.append((tag, kind))
         if tag == "meta" and a.get("name") == "referrer" and a.get("content") == "no-referrer":
             self.no_referrer = True
         if tag == "meta" and (a.get("http-equiv") or "").lower() == "content-security-policy":
@@ -128,10 +216,68 @@ class Page(HTMLParser):
     def handle_endtag(self, tag):
         if tag == "script":
             self.in_data = False
+        # Back to the element that opens it, whatever was left unclosed (<li>, <p>).
+        for i in range(len(self.stack) - 1, -1, -1):
+            if self.stack[i][0] == tag:
+                del self.stack[i:]
+                break
+
+
+def chrome_problems(page: Page, site: Site, cta: bool = True) -> list:
+    """What a page's header, footer and sky have wrong against v4's chrome
+    (Site.header(), Site.footer(), Site.sky()), or []."""
+    problems = []
+    h = page.header
+    if not page.chrome_css:
+        problems.append("assets/chrome.css is not loaded")
+    if not page.chrome_js:
+        problems.append("assets/chrome.js is not loaded")
+    if page.headers != 1:
+        problems.append(f'{page.headers} <header class="top">, one wanted (Site.header())')
+    else:
+        if not h["switch"] or not h["sites"]:
+            problems.append("header: no name button with the menu of Boréale's sites (popover #sites)")
+        if h["nav"] != 1:
+            problems.append(f'header: {h["nav"]} <nav class="nav">, one wanted (the row of links)')
+        elif not h["nav_label"]:
+            problems.append("header: its nav has no aria-label")
+        if not h["lang_button"] or not h["langs"]:
+            problems.append("header: no language button with its menu (popover #languages)")
+        if h["parts"] != ["switcher", "settings"]:
+            problems.append("header: the name's menu comes first, the languages' last")
+        links = h["nav_links"]
+        pills = [i for i, (classes, _) in enumerate(links) if "nav-cta" in classes]
+        if len(pills) > 1 or (cta and not pills):
+            problems.append(f"header: {len(pills)} call to action (a.nav-cta), " + ("one" if cta else "at most one") + " wanted")
+        github = [i for i, (classes, _) in enumerate(links) if "nav-gh" in classes]
+        if len(github) > 1:
+            problems.append("header: more than one GitHub link (a.nav-gh)")
+        if pills and github and github[0] < pills[0]:
+            problems.append("header: GitHub comes before the call to action")
+        if pills and pills[0] != max(i for i, (c, _) in enumerate(links) if "nav-gh" not in c):
+            problems.append("header: the call to action comes after the page's links, GitHub last")
+        if sum(1 for _, current in links if current) > 1:
+            problems.append("header: more than one link of the row is aria-current")
+        if h["sites_current"] != 1:
+            problems.append(f"header: {h['sites_current']} sites marked aria-current in the menu of Boréale's sites, one wanted")
+        if len(h["langs_current"]) != 1:
+            problems.append(f"header: {len(h['langs_current'])} languages marked aria-current, one wanted")
+        elif page.lang and h["langs_current"][0] != page.lang:
+            problems.append(f"header: the language marked is {h['langs_current'][0]}, the page's <html lang> is {page.lang}")
+    if page.footers != 1:
+        problems.append(f'{page.footers} <footer class="footer">, one wanted (Site.footer())')
+    else:
+        for _, group in site.groups:
+            for other in group:
+                if other["key"] != site.key and not any(link.startswith(other["url"]) for link in page.footer_links):
+                    problems.append(f"footer: no link to {other['name']} ({other['url']}), sites.json's")
+    if page.canvas and not page.sky_home:
+        problems.append("canvas#sky outside a home's sky (Site.sky(home=True))")
+    return problems
 
 
 def pages(out: Path, site: Site, skip: tuple = ("assets",), apart: tuple = (), tracker: bool = True,
-          base: str = None) -> tuple:
+          base: str = None, chrome: bool = False, bare: tuple = (), cta: bool = True) -> tuple:
     """Every page of the built site `out` checked: (errors, how many pages).
     `skip`: folders not walked (assets, a site's data), wherever they are.
     `apart`: folders of the site's root built apart (simulator, demo): not
@@ -139,7 +285,10 @@ def pages(out: Path, site: Site, skip: tuple = ("assets",), apart: tuple = (), t
     preview, counted by no one (SITE_NOINDEX=1). `base`: the path the root's
     404.html is served under, wherever the address not found is (a site's
     SITE_BASE, /PlayGuard/): its links start from there; the site's own
-    address' path by default."""
+    address' path by default. `chrome`: the site is on v4's header and footer
+    (chrome_problems()), on every page but those of `bare` (globs on the
+    page's path: a page without them); `cta`: False for a site whose header
+    has no call to action."""
     errors = []
     apart = [Path(a).parts for a in apart]
 
@@ -178,6 +327,8 @@ def pages(out: Path, site: Site, skip: tuple = ("assets",), apart: tuple = (), t
             errors.append(f"{name}: {policy_problem(parsed.policy)}")
         if tracker and not parsed.tracker and not parsed.redirect:
             errors.append(f"{name}: no Umami tracker (assets/umami.js)")
+        if chrome and not parsed.redirect and not any(fnmatch.fnmatchcase(name, g) for g in bare):
+            errors += [f"{name}: {p}" for p in chrome_problems(parsed, site, cta)]
         for data in parsed.data:
             try:
                 json.loads(data or "{}")
