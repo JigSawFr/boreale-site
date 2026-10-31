@@ -428,6 +428,103 @@ class Site:
                 f'      <ul id="languages" class="langs" popover aria-label="{label}">\n{options}\n      </ul>\n    </div>')
 
 
+    # -- The page chrome (assets/chrome.css, assets/chrome.js).
+
+    def skip(self, catalog: dict) -> str:
+        """The first link of a page: to its <main id="main">."""
+        return f'<a class="skip" href="#main">{catalog["chrome_skip"]}</a>'
+
+    @staticmethod
+    def sky(home: bool = False, canvas: bool = True) -> str:
+        """The opening of the sky behind the header and the hero, which the
+        page closes with </div> after them. A home page (`home`) has the
+        aurora, a canvas chrome.js moves; any other page the quieter sky, a
+        gradient and a line under it. `canvas=False`: a home page whose
+        aurora stays a gradient (a hero that needs the stillness of one), the
+        way a page opts out of the canvas."""
+        if not home:
+            return '<div class="sky">'
+        return '<div class="sky sky-home">' + ('\n  <canvas id="sky" aria-hidden="true"></canvas>' if canvas else "")
+
+    def anchor(self, href: str, label: str, medium: str, css: str = "", current: bool = False) -> str:
+        """An <a> of the chrome by the rules for links out: `href` as written
+        in the page's HTML, tagged for Umami (`medium`: nav, footer) and
+        given its referrer rule when it leaves the site."""
+        url = self.utm(href, medium)
+        tag = f'<a href="{url}"' + (f' class="{css}"' if css else "") + (' aria-current="page"' if current else "") + ">"
+        if urlparse(html.unescape(url)).scheme in ("http", "https"):
+            tag = self.link_out(tag, url)
+        return f"{tag}{label}</a>"
+
+    def header(self, language: str, catalog: dict, root: str, path: str, links=(), cta=None, github: str = None,
+               current: str = None, label: str = None, latest: dict = None, brand: str = None,
+               home: str = None) -> str:
+        """The page's header, the same on every site (chrome.css): the name
+        with the menu of Boréale's sites (switcher()), the nav, the languages
+        (languages(), `path` the page's path in its language).
+
+        links    [(key, href)]: the page's links, in order; `key` is the
+                 catalog's text. Plain links after the name.
+        cta      (key, href): the call to action, the pill in the aurora's
+                 gradient; first of the links on a phone.
+        github   the repository's address: a GitHub link after the pill,
+                 which a phone leaves to the footer.
+        current  the key of the link the page is (aria-current="page").
+        label    the nav's accessible name (the site's name).
+        latest, brand, home: switcher()'s.
+        `href`s are attribute-ready, as written in the page's HTML."""
+        items = []
+        for key, href in links:
+            items.append(self.anchor(href, catalog[key], "nav", current=key == current))
+        if cta:
+            key, href = cta
+            items.append(self.anchor(href, catalog[key], "nav", "nav-cta", current=key == current))
+        if github:
+            items.append(self.anchor(github, "GitHub", "nav", "nav-gh"))
+        nav = "\n".join(f"      {a}" for a in items)
+        # The menu of Boréale's sites too: the whole header by the rules for links out.
+        return self.links_out(
+            f'<header class="top">\n    {self.switcher(language, catalog, root, latest, brand=brand, home=home)}\n'
+            f'    <nav class="nav" aria-label="{attribute(label or self.name)}">\n{nav}\n    </nav>\n'
+            f'    {self.languages(language, catalog, root, path)}\n  </header>')
+
+    def footer(self, language: str, catalog: dict, root: str, columns=(), about=(), fine: str = None,
+               brand: str = None, support: bool = True) -> str:
+        """The page's footer (chrome.css), the same on every site: the project
+        (name, `about` lines), the site's own `columns`, Boréale's sites, read
+        from sites.json so that a site added appears everywhere, then the
+        support.
+
+        columns  [(heading, [(text, href)])]: the site's own columns, texts
+                 ready for the page (catalog texts, "GitHub").
+        about    lines under the name (the licence), each a paragraph.
+        fine     the fine print under the columns.
+        brand    the first column's name, else the site's mark and name.
+        support  False: no column for the support (GitHub Sponsors, Ko-fi)."""
+        folder_ = folder(language)
+        brand = brand if brand is not None else (
+            f'<img src="{root}assets/marks/{self.key}.svg" alt="" width="20" height="20"> <strong>{self.name}</strong>')
+        lines = [f"<p>{brand}</p>"] + [f"<p>{line}</p>" for line in about]
+        if self.key != "boreale":
+            lines.append("<p>" + self.anchor(f"https://boreale.dev/{folder_}", catalog["chrome_part_of"], "footer", "boreale") + "</p>")
+
+        def column(heading, entries):
+            li = "".join(f"<li>{self.anchor(href, text, 'footer')}</li>" for text, href in entries)
+            return f"<div>\n          <h2>{heading}</h2>\n          <ul>{li}</ul>\n        </div>"
+
+        sites = [(s["name"], s["url"] + folder_) for _, group in self.groups for s in group if s["key"] != self.key]
+        sites.append((catalog["chrome_legal"], f"https://boreale.dev/{folder_}legal/"))
+        cols = [column(heading, entries) for heading, entries in columns] + [column("Boréale", sites)]
+        if support:
+            cols.append(column(catalog["chrome_support"], [("GitHub Sponsors", "https://github.com/sponsors/JigSawFr"),
+                                                            ("Ko-fi", "https://ko-fi.com/jigsawfr")]))
+        first = "<div>\n          " + "\n          ".join(lines) + "\n        </div>"
+        fine = f'\n    <p class="fine">{fine}</p>' if fine else ""
+        return self.links_out(
+            f'<footer class="footer">\n  <div class="footer-inner">\n    <div class="footer-cols">\n'
+            f'        {first}\n        ' + "\n        ".join(cols) + f'\n    </div>{fine}\n  </div>\n</footer>')
+
+
 # ---- The built site.
 
 def copy_assets(out: Path) -> None:

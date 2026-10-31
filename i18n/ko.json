@@ -12,5 +12,9 @@
   "sites_aurore": "그 뒤의 UI 라이브러리",
   "sites_atlas": "모든 플랫폼의 모든 게임 지도",
   "sites_lantern": "서버와 콘솔 사이의 프로토콜",
-  "sites_ha": "Home Assistant 속 여러분의 홈브루"
+  "sites_ha": "Home Assistant 속 여러분의 홈브루",
+  "chrome_skip": "본문으로 건너뛰기",
+  "chrome_legal": "개인정보 및 법적 고지",
+  "chrome_support": "프로젝트 후원하기",
+  "chrome_part_of": "Boréale 프로젝트"
 }

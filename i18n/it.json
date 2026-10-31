@@ -12,5 +12,9 @@
   "sites_aurore": "La libreria di interfaccia dietro di loro",
   "sites_atlas": "Una mappa di tutti i giochi, su ogni piattaforma",
   "sites_lantern": "Il protocollo tra server e console",
-  "sites_ha": "I tuoi homebrew in Home Assistant"
+  "sites_ha": "I tuoi homebrew in Home Assistant",
+  "chrome_skip": "Vai al contenuto",
+  "chrome_legal": "Privacy e note legali",
+  "chrome_support": "Sostieni il progetto",
+  "chrome_part_of": "Un progetto Boréale"
 }

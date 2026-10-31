@@ -12,5 +12,9 @@
   "sites_aurore": "De interfacebibliotheek erachter",
   "sites_atlas": "Een kaart van alle games, op elk platform",
   "sites_lantern": "Het protocol tussen servers en consoles",
-  "sites_ha": "Je homebrews in Home Assistant"
+  "sites_ha": "Je homebrews in Home Assistant",
+  "chrome_skip": "Naar de inhoud",
+  "chrome_legal": "Privacy en juridische informatie",
+  "chrome_support": "Steun het project",
+  "chrome_part_of": "Een Boréale-project"
 }
