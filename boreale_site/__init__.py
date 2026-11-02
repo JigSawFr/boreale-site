@@ -498,7 +498,7 @@ class Site:
             f'    {self.languages(language, catalog, root, path)}\n  </header>')
 
     def footer(self, language: str, catalog: dict, root: str, columns=(), about=(), fine: str = None,
-               brand: str = None, support: bool = True, legal: tuple = None) -> str:
+               brand: str = None, support: bool = True, legal: tuple = None, made: bool = True) -> str:
         """The page's footer (chrome.css), the same on every site: the project
         (name, `about` lines), the site's own `columns`, Boréale's sites, read
         from sites.json so that a site added appears everywhere, then the
@@ -514,7 +514,10 @@ class Site:
         support  False: no column for the support (GitHub Sponsors, Ko-fi).
         legal    (text, href): the site's own legal notice instead of boreale.dev's
                  in Boréale's column, written as `columns` entries are (the same
-                 rules for links out, UTM tags to our sites included)."""
+                 rules for links out, UTM tags to our sites included).
+        made     False: no line on how the projects are made (the AI
+                 disclosure: who designs, reviews and signs, that AI coding
+                 assistants help write, a link to boreale.dev's how/)."""
         folder_ = folder(language)
         brand = brand if brand is not None else (
             f'<img src="{root}assets/marks/{self.key}.svg" alt="" width="20" height="20"> <strong>{self.name}</strong>')
@@ -534,10 +537,17 @@ class Site:
             cols.append(column(catalog["chrome_support"], [("GitHub Sponsors", "https://github.com/sponsors/JigSawFr"),
                                                             ("Ko-fi", "https://ko-fi.com/jigsawfr")]))
         first = "<div>\n          " + "\n          ".join(lines) + "\n        </div>"
+        if made:
+            author = self.anchor("https://github.com/JigSawFr", "JigSawFr", "footer")
+            how = self.anchor(f"https://boreale.dev/{folder_}how/", catalog["chrome_how"], "footer")
+            made = (f'\n    <p class="footer-made"><span class="footer-ai"><span aria-hidden="true"></span>{catalog["chrome_ai"]}</span> '
+                    f'<span>{catalog["chrome_made"].replace("{author}", author)} {how}</span></p>')
+        else:
+            made = ""
         fine = f'\n    <p class="footer-fine">{fine}</p>' if fine else ""
         return self.links_out(
             f'<footer class="footer">\n  <div class="footer-inner">\n    <div class="footer-cols">\n'
-            f'        {first}\n        ' + "\n        ".join(cols) + f'\n    </div>{fine}\n  </div>\n</footer>')
+            f'        {first}\n        ' + "\n        ".join(cols) + f'\n    </div>{made}{fine}\n  </div>\n</footer>')
 
 
 # ---- The built site.

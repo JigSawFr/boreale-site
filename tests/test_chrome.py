@@ -156,6 +156,21 @@ class Footer(unittest.TestCase):
         # Not given: boreale.dev's, in the language's folder.
         self.assertIn("https://boreale.dev/de/legal/", self.footer("ha", language="de"))
 
+    def test_how_it_is_made(self):
+        out = self.footer("atlas", "fr")
+        self.assertIn('<p class="footer-made">', out)
+        self.assertIn("Humain aux commandes · IA en appui", out)
+        self.assertRegex(out, r'<a href="https://github.com/JigSawFr"[^>]*referrerpolicy="strict-origin"[^>]*>JigSawFr</a>, ingénieur full stack')
+        self.assertRegex(out, r'<a href="https://boreale.dev/fr/how/\?utm_source=atlas&amp;utm_medium=footer"[^>]*>Comment c\'est fait</a>')
+        self.assertNotIn("{author}", out)
+        # Before the fine print; none when a site asks for none.
+        self.assertLess(out.index("footer-made"), self.footer("atlas", "fr", fine="Fine.").index("footer-fine"))
+        self.assertNotIn("footer-made", self.footer(made=False))
+
+    def test_every_language_names_the_author(self):
+        for code, catalog in boreale.common_catalogs().items():
+            self.assertEqual(catalog["chrome_made"].count("{author}"), 1, code)
+
     def test_boreale_itself_has_no_part_of_link(self):
         self.assertNotIn('class="boreale"', self.footer("boreale"))
         self.assertIn('class="boreale"', self.footer("atlas"))
@@ -163,7 +178,7 @@ class Footer(unittest.TestCase):
 
 class Catalogs(unittest.TestCase):
     def test_new_texts_in_every_language(self):
-        keys = {"chrome_skip", "chrome_legal", "chrome_support", "chrome_part_of"}
+        keys = {"chrome_skip", "chrome_legal", "chrome_support", "chrome_part_of", "chrome_ai", "chrome_made", "chrome_how"}
         for code, catalog in boreale.common_catalogs().items():
             self.assertTrue(keys <= set(catalog), code)
             self.assertTrue(all(catalog[k].strip() for k in keys), code)

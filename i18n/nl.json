@@ -16,5 +16,8 @@
   "chrome_skip": "Naar de inhoud",
   "chrome_legal": "Privacy en juridische informatie",
   "chrome_support": "Steun het project",
-  "chrome_part_of": "Een Boréale-project"
+  "chrome_part_of": "Een Boréale-project",
+  "chrome_ai": "Mens aan het roer · AI als hulp",
+  "chrome_made": "Ontworpen, nagekeken en ondertekend door {author}, full-stack engineer. Geschreven met hulp van AI-programmeerassistenten.",
+  "chrome_how": "Hoe het gemaakt wordt"
 }

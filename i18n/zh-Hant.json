@@ -16,5 +16,8 @@
   "chrome_skip": "跳到內容",
   "chrome_legal": "隱私與法律聲明",
   "chrome_support": "支持本專案",
-  "chrome_part_of": "Boréale 專案"
+  "chrome_part_of": "Boréale 專案",
+  "chrome_ai": "人主導 · AI 輔助",
+  "chrome_made": "由全端工程師 {author} 設計、審閱並簽署。借助 AI 程式設計助理撰寫。",
+  "chrome_how": "製作方式"
 }

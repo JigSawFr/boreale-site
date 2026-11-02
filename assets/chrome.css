@@ -271,6 +271,10 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.2; le
 .footer h2 { font: 400 12px var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--mist); margin: 0 0 10px; }
 .footer ul { list-style: none; padding: 0; margin: 0; }
 .footer li { margin: 4px 0; }
+.footer-made { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 16px; padding-top: 16px; border-top: 1px solid rgb(169 182 204 / 0.14); font-size: 14px; }
+.footer-ai { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 3px 10px 3px 8px; border: 1px solid rgb(169 182 204 / 0.22); border-radius: 14px; font: 400 12px var(--mono); color: var(--text); }
+.footer-ai > span { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--aurora-grad); }
+.footer-made > span:last-child { min-width: 0; }
 .footer-fine { font-size: 13px; }
 .footer-cols > * { min-width: 0; overflow-wrap: anywhere; }
 .footer a { overflow-wrap: anywhere; }
