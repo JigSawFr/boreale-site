@@ -172,13 +172,16 @@ footer = site.footer(language, catalog, root,
   `sky(home=True, canvas=False)`. The veils and stars under a home's hero
   (`.sky-home:not(.no-veils) ~ main`) are left out with `veils=False` (the page not found). Nothing moves with `prefers-reduced-motion`, or while
   the sky is out of view.
-- **`Site.footer(language, catalog, root, columns, about, fine, brand, support, legal)`**: the
+- **`Site.footer(language, catalog, root, columns, about, fine, brand, support, legal, made)`**: the
   project (mark, name, `about` lines, "A Boréale project"), the site's own `columns`
   (`[(heading, [(text, href) or (text, href, {attributes})])]`, texts ready for the page;
   the attributes (lang, hreflang, rel, class) go through the rules for links out), Boréale's sites **read from
   `sites.json`** (the others, in its order, and the legal notice, so a site added or ha
   appears everywhere), the support (`support=False` to leave it out), the fine print. `legal=(text, href)` replaces
-  the legal notice's link (boreale.dev's) with the site's own, by the same rules for links out.
+  the legal notice's link (boreale.dev's) with the site's own, by the same rules for links out. Above the fine print,
+  how the projects are made (`.footer-made`): "Human-led · AI-assisted", who designs, reviews
+  and signs, that AI coding assistants help write, and a link to boreale.dev's `how/`
+  (`chrome_ai`, `chrome_made`, `chrome_how`); `made=False` leaves it out.
 - `Site.skip(catalog)` is the skip link; `Site.anchor(href, label, medium, css, current)`
   one link by the same rules.
 - Classes `chrome.css` provides: `.sky`, `.sky-home`, `.top`, `.brand`, `.nav`,
@@ -431,6 +434,20 @@ the site's own checks. Add it to the site's `.github/dependabot.yml` (the
 its own schedule). The library's own CI runs `site.yml` on the sample site
 (`test-site-workflow.yml`), so a tag is cut from a main whose workflow
 passed.
+
+## How it's made
+
+boreale-site is built by [JigSawFr](https://github.com/JigSawFr), a full-stack
+engineer who has shipped production software for years, with AI coding
+assistants as part of the toolbox.
+
+- **I decide**: architecture, scope, what ships and what doesn't.
+- **AI helps write**: first drafts of code and tests, docs, and the translations.
+- **I review everything**: every change is read, tested and signed before it
+  reaches `main`.
+
+Nothing on the sites calls an AI service. More on
+[boreale.dev](https://boreale.dev/how/?utm_source=github&utm_medium=readme).
 
 ## Releases
 

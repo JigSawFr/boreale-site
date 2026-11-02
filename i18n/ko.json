@@ -16,5 +16,8 @@
   "chrome_skip": "본문으로 건너뛰기",
   "chrome_legal": "개인정보 및 법적 고지",
   "chrome_support": "프로젝트 후원하기",
-  "chrome_part_of": "Boréale 프로젝트"
+  "chrome_part_of": "Boréale 프로젝트",
+  "chrome_ai": "사람이 주도 · AI가 보조",
+  "chrome_made": "설계·검토·서명: {author}(풀스택 엔지니어). AI 코딩 어시스턴트의 도움을 받아 작성했습니다.",
+  "chrome_how": "만드는 방식"
 }

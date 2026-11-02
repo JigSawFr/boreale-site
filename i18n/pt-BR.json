@@ -16,5 +16,8 @@
   "chrome_skip": "Pular para o conteúdo",
   "chrome_legal": "Privacidade e aviso legal",
   "chrome_support": "Apoiar o projeto",
-  "chrome_part_of": "Um projeto Boréale"
+  "chrome_part_of": "Um projeto Boréale",
+  "chrome_ai": "Conduzido por uma pessoa · Assistido por IA",
+  "chrome_made": "Projetado, revisado e assinado por {author}, engenheiro full stack. Escrito com a ajuda de assistentes de programação com IA.",
+  "chrome_how": "Como é feito"
 }

@@ -16,5 +16,8 @@
   "chrome_skip": "本文へ移動",
   "chrome_legal": "プライバシーと法的情報",
   "chrome_support": "プロジェクトを支援",
-  "chrome_part_of": "Boréale のプロジェクト"
+  "chrome_part_of": "Boréale のプロジェクト",
+  "chrome_ai": "人が主導・AI が補助",
+  "chrome_made": "設計・レビュー・署名：{author}（フルスタックエンジニア）。AI コーディングアシスタントの助けを借りて書かれています。",
+  "chrome_how": "制作について"
 }

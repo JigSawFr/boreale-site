@@ -16,5 +16,8 @@
   "chrome_skip": "跳到正文",
   "chrome_legal": "隐私与法律声明",
   "chrome_support": "支持本项目",
-  "chrome_part_of": "Boréale 项目"
+  "chrome_part_of": "Boréale 项目",
+  "chrome_ai": "人主导 · AI 辅助",
+  "chrome_made": "由全栈工程师 {author} 设计、审阅并签名。借助 AI 编程助手编写。",
+  "chrome_how": "制作方式"
 }
