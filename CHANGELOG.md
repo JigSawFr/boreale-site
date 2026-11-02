@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/JigSawFr/boreale-site/compare/v1.0.0...v1.1.0) (2026-11-02)
+
+
+### Features
+
+* **footer:** say how the projects are made, with AI coding assistants ([#14](https://github.com/JigSawFr/boreale-site/issues/14)) ([ee41e26](https://github.com/JigSawFr/boreale-site/commit/ee41e26ab5152ba41985b995f73511e25a03bc07))
+
 ## 1.0.0 (2026-10-31)
 
 
