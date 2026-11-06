@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Lantern SDK's mark: the frame in the aurora's colours around the night, a lantern in snow between code brackets. -->
+  <defs><linearGradient id="m-colour" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00FFCC"/><stop offset="0.65" stop-color="#33BBFF"/><stop offset="1" stop-color="#8A5CFF"/></linearGradient></defs>
+  <path d="M58 40 L 198 40 Q 214 40 214 56 L 214 200 Q 214 216 198 216 L 58 216 Q 42 216 42 200 L 42 56 Q 42 40 58 40 Z" fill="#0E1A33" stroke="url(#m-colour)" stroke-width="16" stroke-linejoin="round"/>
+  <g transform="translate(-10 0)">
+  <path d="M104 84 A 12 12 0 0 1 128 84" fill="none" stroke="#E8EEF7" stroke-width="9" stroke-linecap="round"/>
+  <path d="M98 90 L 134 90 L 144 102 L 88 102 Z" fill="#E8EEF7" stroke="#E8EEF7" stroke-width="5" stroke-linejoin="round"/>
+  <rect x="96" y="108" width="44" height="54" rx="7" fill="none" stroke="#E8EEF7" stroke-width="10"/>
+  <path d="M118 118 C 126 127, 128 133, 128 139 A 10 10 0 0 1 108 139 C 108 133, 110 127, 118 118 Z" fill="#E8EEF7"/>
+  <rect x="88" y="168" width="60" height="10" rx="5" fill="#E8EEF7"/>
+  </g>
+  <path d="M164 116 L 152 134 L 164 152 M190 116 L 202 134 L 190 152" fill="none" stroke="#E8EEF7" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

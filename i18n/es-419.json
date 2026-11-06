@@ -12,6 +12,8 @@
   "sites_aurore": "La biblioteca de interfaz que los mueve",
   "sites_atlas": "Un mapa de todos los juegos, en todas las plataformas",
   "sites_lantern": "El protocolo entre servidores y consolas",
+  "sites_sdk": "Lantern en tus homebrews, en cuatro lenguajes",
+  "sites_bridge": "Tu biblioteca de Ownfoil o Tinfoil, hablada en Lantern",
   "sites_ha": "Tus homebrews en Home Assistant",
   "chrome_skip": "Ir al contenido",
   "chrome_legal": "Privacidad y aviso legal",

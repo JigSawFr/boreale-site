@@ -12,6 +12,8 @@
   "sites_aurore": "それらを支える UI ライブラリ",
   "sites_atlas": "すべてのプラットフォームの、すべてのゲームの地図",
   "sites_lantern": "サーバーとゲーム機をつなぐプロトコル",
+  "sites_sdk": "あなたのホームブリューで話す Lantern、4つの言語で",
+  "sites_bridge": "Ownfoil や Tinfoil のライブラリを Lantern で話す",
   "sites_ha": "Home Assistant の中の自作ソフト",
   "chrome_skip": "本文へ移動",
   "chrome_legal": "プライバシーと法的情報",

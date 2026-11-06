@@ -12,6 +12,8 @@
   "sites_aurore": "它们背后的界面库",
   "sites_atlas": "所有平台上所有游戏的地图",
   "sites_lantern": "服务器与主机之间的协议",
+  "sites_sdk": "在你的自制软件中使用 Lantern，支持四种语言",
+  "sites_bridge": "把你的 Ownfoil 或 Tinfoil 库转换成 Lantern",
   "sites_ha": "Home Assistant 中的自制软件",
   "chrome_skip": "跳到正文",
   "chrome_legal": "隐私与法律声明",
