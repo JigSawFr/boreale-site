@@ -16,7 +16,9 @@
     ]},
     {"title": "sites_open", "sites": [
       {"key": "atlas", "name": "Atlas", "url": "https://atlas.boreale.dev/", "utm": "atlas"},
-      {"key": "lantern", "name": "Lantern", "url": "https://lantern.boreale.dev/", "utm": "lantern"}
+      {"key": "lantern", "name": "Lantern", "url": "https://lantern.boreale.dev/", "utm": "lantern"},
+      {"key": "sdk", "name": "Lantern SDK", "url": "https://sdk.lantern.boreale.dev/", "utm": "sdk", "soon": true},
+      {"key": "bridge", "name": "Lantern Bridge", "url": "https://bridge.lantern.boreale.dev/", "utm": "bridge", "soon": true}
     ]}
   ]
 }
