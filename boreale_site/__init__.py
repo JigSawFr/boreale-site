@@ -301,6 +301,21 @@ class Site:
         return ('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"'
                 f' xmlns:xhtml="http://www.w3.org/1999/xhtml">\n{urls}</urlset>\n')
 
+    def llms(self, title: str, summary: str, descriptions: dict, links=()) -> str:
+        """llms.txt (llmstxt.org): what the site is, for a program that reads it for someone, in Markdown: the title,
+        a one-line summary, the page in each language (`descriptions`: language code to what the page says, its own
+        language's) and the pages elsewhere that go with it (`links`: name, address, what). One line each."""
+        def line(text):
+            return " ".join(str(text).split())
+        out = [f"# {title}", "", f"> {line(summary)}", "", "## Pages", ""]
+        for code, _, name, _ in LANGUAGES:
+            if code in descriptions:
+                out.append(f"- [{name}]({self.address(code)}): {line(descriptions[code])}")
+        if links:
+            out += ["", "## Elsewhere", ""]
+            out += [f"- [{name}]({url}): {line(text)}" for name, url, text in links]
+        return "\n".join(out) + "\n"
+
     # -- Links out and the audience.
 
     def utm(self, url: str, medium: str) -> str:
