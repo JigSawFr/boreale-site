@@ -69,3 +69,12 @@ jobs:
       - env:
           ID: ${{ needs.sample.outputs.pages_artifact_id }}
         run: test -n "$ID" || { echo "::error::no Pages artifact id"; exit 1; }
+
+  # The links workflow, on the same sample site (no address of another site to follow: it says so and passes).
+  links:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/links.yml
+    with:
+      build: python3 tools/sample_site.py build
+      library: .
