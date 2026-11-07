@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.2.0](https://github.com/JigSawFr/boreale-site/compare/v1.1.0...v1.2.0) (2026-11-07)
+
+
+### Features
+
+* **check:** a budget for what a page loads at once ([#20](https://github.com/JigSawFr/boreale-site/issues/20)) ([463194d](https://github.com/JigSawFr/boreale-site/commit/463194dcf3ebe5f6a5ae89d2eee2a5224f862327))
+* **links:** follow the links out of a built site, weekly ([#22](https://github.com/JigSawFr/boreale-site/issues/22)) ([2f83041](https://github.com/JigSawFr/boreale-site/commit/2f83041741afc602a3c42e4799d1b449a6db6c52))
+* **llms:** a generator and a check for the site's llms.txt ([#21](https://github.com/JigSawFr/boreale-site/issues/21)) ([423a11b](https://github.com/JigSawFr/boreale-site/commit/423a11bbb7a5a3b61605443979e3eafcc1e7608d))
+* **menu:** add Lantern SDK and Lantern Bridge to the selector ([#16](https://github.com/JigSawFr/boreale-site/issues/16)) ([b954234](https://github.com/JigSawFr/boreale-site/commit/b9542347a73de96a65e5c6671f6b2e8742121db4))
+* **sites:** Lantern SDK and Lantern Bridge are live ([#18](https://github.com/JigSawFr/boreale-site/issues/18)) ([f4e470f](https://github.com/JigSawFr/boreale-site/commit/f4e470f7e90c0689db66503ca9bf5b65fc49f490))
+
+
+### Bug Fixes
+
+* **sites:** the SDK has six languages, not four ([#19](https://github.com/JigSawFr/boreale-site/issues/19)) ([8d834df](https://github.com/JigSawFr/boreale-site/commit/8d834df711ed5fe2c371694682768ade2c2c2ee6))
+
 ## [1.1.0](https://github.com/JigSawFr/boreale-site/compare/v1.0.0...v1.1.0) (2026-11-02)
 
 
