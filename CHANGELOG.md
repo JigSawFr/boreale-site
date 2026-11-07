@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.0](https://github.com/JigSawFr/boreale-site/compare/v1.1.0...v1.2.0) (2026-11-07)
+
+
+### Features
+
+* **menu:** add Lantern SDK and Lantern Bridge to the selector ([#16](https://github.com/JigSawFr/boreale-site/issues/16)) ([b954234](https://github.com/JigSawFr/boreale-site/commit/b9542347a73de96a65e5c6671f6b2e8742121db4))
+* **sites:** Lantern SDK and Lantern Bridge are live ([#18](https://github.com/JigSawFr/boreale-site/issues/18)) ([f4e470f](https://github.com/JigSawFr/boreale-site/commit/f4e470f7e90c0689db66503ca9bf5b65fc49f490))
+
 ## [1.1.0](https://github.com/JigSawFr/boreale-site/compare/v1.0.0...v1.1.0) (2026-11-02)
 
 
