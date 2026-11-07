@@ -281,6 +281,38 @@ def chrome_problems(page: Page, site: Site, cta: bool = True) -> list:
     return problems
 
 
+def llms(out: Path, site: Site, name: str = "llms.txt") -> list:
+    """The site's llms.txt (Site.llms()) checked: its title, its summary, links that are `[name](address)` lines, a page
+    of the site's own that is there, no e-mail address; [] when there is no such file."""
+    path = out / name
+    if not path.exists():
+        return []
+    errors = []
+    text = path.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    if not lines or not lines[0].startswith("# ") or not lines[0][2:].strip():
+        errors.append(f"{name}: it starts with a # title")
+    if not any(line.startswith("> ") and line[2:].strip() for line in lines[:5]):
+        errors.append(f"{name}: no > summary under the title")
+    errors += [f"{name}: an e-mail address ({e}), contact goes through GitHub" for e in emails(text)]
+    root = out.resolve()
+    for line in lines:
+        if not line.startswith("- "):
+            continue
+        found = re.match(r"- \[([^\]]+)\]\((https?://[^)\s]+)\)(?:: .+)?$", line)
+        if found is None:
+            errors.append(f"{name}: not a - [name](address): what line: {line[:60]}")
+            continue
+        url = found.group(2)
+        if url.startswith(site.url):
+            target = root / unquote(urlparse(url[len(site.url):]).path)
+            if target.is_dir():
+                target = target / "index.html"
+            if not target.exists():
+                errors.append(f"{name}: {url} leads nowhere")
+    return errors
+
+
 def pages(out: Path, site: Site, skip: tuple = ("assets",), apart: tuple = (), tracker: bool = True,
           base: str = None, chrome: bool = False, bare: tuple = (), cta: bool = True, budget: int = None) -> tuple:
     """Every page of the built site `out` checked: (errors, how many pages).

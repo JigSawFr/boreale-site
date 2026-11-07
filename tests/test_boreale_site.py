@@ -224,6 +224,28 @@ class Checks(unittest.TestCase):
             (out / "index.html").write_text(PAGE.format(body=body.replace(' loading="lazy"', ""), connect="'self' https://gateway.umami.is"), encoding="utf-8")
             self.assertEqual(len(check.pages(out, site, budget=400 * 1024)[0]), 1)
 
+    def test_llms(self):
+        site = boreale.Site("atlas")
+        text = site.llms("Atlas", "A map of every game,\n on every platform.", {"en-US": "English page", "fr": "La page"},
+                         links=[("Source", "https://github.com/JigSawFr/Atlas", "The code")])
+        self.assertTrue(text.startswith("# Atlas\n\n> A map of every game, on every platform.\n\n## Pages\n\n- [English]("))
+        self.assertIn("- [Français](" + site.url + "fr/): La page\n", text)
+        self.assertIn("## Elsewhere\n\n- [Source](https://github.com/JigSawFr/Atlas): The code\n", text)
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d)
+            self.assertEqual(check.llms(out, site), [])
+            (out / "llms.txt").write_text(text, encoding="utf-8")
+            (out / "index.html").write_text("", encoding="utf-8")
+            (out / "fr").mkdir()
+            (out / "fr" / "index.html").write_text("", encoding="utf-8")
+            self.assertEqual(check.llms(out, site), [])
+            (out / "fr" / "index.html").unlink()
+            self.assertEqual(check.llms(out, site), [f"llms.txt: {site.url}fr/ leads nowhere"])
+            (out / "llms.txt").write_text("Atlas\n- [x](y)\nwrite me@example.org\n", encoding="utf-8")
+            found = check.llms(out, site)
+            for part in ("starts with a # title", "no > summary", "not a - [name](address)"):
+                self.assertTrue(any(part in e for e in found), (part, found))
+
     def test_reserved_address(self):
         self.assertEqual(self.errors("<p>someone@example.org</p>"), [])
 

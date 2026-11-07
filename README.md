@@ -102,6 +102,22 @@ neither policy nor tracker, but sends no referrer either. An event handler
 attribute (`onclick=`) is reported: the policy blocks it. `check_catalogs()`'s
 `optional` keys, by language, may be left out or empty.
 
+`pages()` also takes `budget=`, the most bytes a page may load at once: its HTML
+and what it names that the browser fetches at once from the site (scripts,
+stylesheets, images not set to `loading="lazy"`). A page over it is reported with
+its weight; none by default.
+
+### llms.txt
+
+`site.llms(title, summary, descriptions, links=())` writes the site's
+[`llms.txt`](https://llmstxt.org/): the title, a one-line summary, the page in each
+language (`descriptions`: language code to what that page says, in its own language)
+and, under "Elsewhere", the pages that go with it (`links`: name, address, what). A
+site writes it next to `sitemap.xml` in its build (not in a preview, `SITE_NOINDEX=1`,
+which should not be read either) and its `check_site.py` calls `check.llms(out, site)`:
+the title and summary are there, each line is a `- [name](address): what` link,
+the pages of the site itself exist, and no address of e-mail appears.
+
 ### The layout
 
 The workflow checks the submodule out (`submodules: true`) and runs
