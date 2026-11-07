@@ -107,6 +107,15 @@ and what it names that the browser fetches at once from the site (scripts,
 stylesheets, images not set to `loading="lazy"`). A page over it is reported with
 its weight; none by default.
 
+### The links out
+
+`tools/check_links.py <built-dir>` follows the links to other sites of a built site (each address once, HEAD then GET,
+redirects followed) and fails on those that lead nowhere now: a 404 or 410, an error that stays after a second try,
+an address that does not resolve, a certificate that does not hold. A server that turns a program away (401, 403, 429,
+999) is reported but not counted, and placeholder addresses (`example.org`, `localhost`, private networks) are left
+out. It reaches the network, so it is not part of `check_site.py`: the reusable workflow `links.yml` runs it, and a
+site calls that weekly (`on: schedule`, `workflow_dispatch`) with its `build` script; a failed run is the report.
+
 ### llms.txt
 
 `site.llms(title, summary, descriptions, links=())` writes the site's

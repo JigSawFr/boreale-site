@@ -1,0 +1,79 @@
+name: links (reusable)
+
+# The links out of a Boréale site, followed (tools/check_links.py): which of them lead nowhere now. It reaches the network,
+# so a site runs it weekly, not on every pull request. The site's own workflow:
+#
+#   name: links
+#   on:
+#     schedule: [{ cron: "17 5 * * 1" }]
+#     workflow_dispatch: {}
+#   permissions: { contents: read }
+#   jobs:
+#     links:
+#       uses: JigSawFr/boreale-site/.github/workflows/links.yml@<sha> # v1.2.0
+#       with:
+#         build: python3 tools/build_site.py build
+#
+# A failed run is the report: GitHub says so to the repository's owner. A called workflow runs in the caller's
+# repository: the checkout is the caller's, and the check is the one in its `library/boreale-site` submodule.
+on:
+  workflow_call:
+    inputs:
+      build:
+        description: "The script that builds the site into `directory`."
+        type: string
+        required: true
+      directory:
+        description: "The built site's folder."
+        type: string
+        default: build
+      library:
+        description: "Where the caller has boreale-site (its tools/check_links.py)."
+        type: string
+        default: library/boreale-site
+      skip_host:
+        description: "A JSON array of hosts not asked (and their subdomains), for a site that turns programs away without saying so."
+        type: string
+        default: "[]"
+      runs_on:
+        description: "The runner."
+        type: string
+        default: ubuntu-26.04
+      timeout_minutes:
+        description: "The job's timeout."
+        type: number
+        default: 15
+
+permissions:
+  contents: read
+
+jobs:
+  links:
+    runs-on: ${{ inputs.runs_on }}
+    timeout-minutes: ${{ inputs.timeout_minutes }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+          persist-credentials: false
+      - name: Build
+        env:
+          SCRIPT: ${{ inputs.build }}
+        run: |
+          printf '%s\n' "$SCRIPT" > "$RUNNER_TEMP/build.sh"
+          bash -e "$RUNNER_TEMP/build.sh"
+      - name: The links
+        env:
+          DIRECTORY: ${{ inputs.directory }}
+          LIBRARY: ${{ inputs.library }}
+          SKIP_HOST: ${{ inputs.skip_host }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess, sys
+          command = [sys.executable, os.path.join(os.environ["LIBRARY"], "tools", "check_links.py"), os.environ["DIRECTORY"]]
+          for host in json.loads(os.environ["SKIP_HOST"]):
+              command += ["--skip-host", host]
+          sys.exit(subprocess.run(command).returncode)
+          PY
