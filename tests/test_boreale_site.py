@@ -205,6 +205,25 @@ class Checks(unittest.TestCase):
                      "loads https://example.org/i.png", "connect-src"):
             self.assertTrue(any(part in e for e in found), (part, found))
 
+    def test_weight_budget(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d)
+            (out / "assets").mkdir()
+            (out / "assets" / "umami.js").write_text("", encoding="utf-8")
+            (out / "assets" / "big.js").write_bytes(b"x" * 300_000)
+            (out / "assets" / "later.jpg").write_bytes(b"x" * 300_000)
+            body = '<script src="assets/big.js" defer></script><img src="assets/later.jpg" alt="" loading="lazy">'
+            (out / "index.html").write_text(PAGE.format(body=body, connect="'self' https://gateway.umami.is"), encoding="utf-8")
+            site = boreale.Site("atlas")
+            self.assertEqual(check.pages(out, site)[0], [])
+            self.assertEqual(check.pages(out, site, budget=400 * 1024)[0], [])
+            found = check.pages(out, site, budget=200 * 1024)[0]
+            self.assertEqual(len(found), 1, found)
+            self.assertIn("index.html: 293 KB loaded at once (2 files and the page), above the budget of 200 KB", found[0])
+            # an image that loads later does not count
+            (out / "index.html").write_text(PAGE.format(body=body.replace(' loading="lazy"', ""), connect="'self' https://gateway.umami.is"), encoding="utf-8")
+            self.assertEqual(len(check.pages(out, site, budget=400 * 1024)[0]), 1)
+
     def test_reserved_address(self):
         self.assertEqual(self.errors("<p>someone@example.org</p>"), [])
 

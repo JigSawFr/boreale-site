@@ -110,6 +110,8 @@ class Page(HTMLParser):
         self.canvas = False
         self.chrome_css = False
         self.chrome_js = False
+        # What the page loads at once, from the site itself: its scripts, its stylesheets, its images not set to load later.
+        self.eager = []
 
     def context(self, tag, a):
         """What an element is in the chrome's markup, or ''."""
@@ -205,6 +207,9 @@ class Page(HTMLParser):
                 self.problems.append("inline <script>")
             elif (a.get("src") or "").endswith("assets/umami.js"):
                 self.tracker = True
+        if (tag == "script" and a.get("src")) or (tag == "link" and "stylesheet" in (a.get("rel") or "").split() and a.get("href")) \
+                or (tag == "img" and a.get("src") and (a.get("loading") or "").lower() != "lazy"):
+            self.eager.append(a.get("href") if tag == "link" else a["src"])
         for name in ("href", "src", "poster"):
             if name in a:
                 self.links.append((name, a[name]))
@@ -277,7 +282,7 @@ def chrome_problems(page: Page, site: Site, cta: bool = True) -> list:
 
 
 def pages(out: Path, site: Site, skip: tuple = ("assets",), apart: tuple = (), tracker: bool = True,
-          base: str = None, chrome: bool = False, bare: tuple = (), cta: bool = True) -> tuple:
+          base: str = None, chrome: bool = False, bare: tuple = (), cta: bool = True, budget: int = None) -> tuple:
     """Every page of the built site `out` checked: (errors, how many pages).
     `skip`: folders not walked (assets, a site's data), wherever they are.
     `apart`: folders of the site's root built apart (simulator, demo): not
@@ -288,7 +293,9 @@ def pages(out: Path, site: Site, skip: tuple = ("assets",), apart: tuple = (), t
     address' path by default. `chrome`: the site is on v4's header and footer
     (chrome_problems()), on every page but those of `bare` (globs on the
     page's path: a page without them); `cta`: False for a site whose header
-    has no call to action."""
+    has no call to action. `budget`: the most bytes a page may load at once (its
+    HTML and what it names that the browser fetches at once from the site:
+    scripts, stylesheets, images not set to load=lazy), None for no limit."""
     errors = []
     apart = [Path(a).parts for a in apart]
 
@@ -310,6 +317,18 @@ def pages(out: Path, site: Site, skip: tuple = ("assets",), apart: tuple = (), t
     own = urlparse(site.url).path
     lost = base.rstrip("/") + "/" if base else own
     root = out.resolve()
+
+    def local(path: Path, link: str):
+        """The file a link of `path` names in the built site, or None (another site, a path outside it)."""
+        url = urlparse(link)
+        if link.startswith(site.url):
+            return root / unquote(urlparse(link[len(site.url):]).path)
+        if url.scheme or link.startswith("//"):
+            return None
+        if url.path.startswith("/"):
+            return root / unquote(url.path[len(own):]) if url.path.startswith(own) else None
+        return Path(os.path.normpath(path.resolve().parent / unquote(url.path)))
+
     for path in found:
         name = path.relative_to(out).as_posix()
         text = path.read_text(encoding="utf-8")
@@ -318,6 +337,12 @@ def pages(out: Path, site: Site, skip: tuple = ("assets",), apart: tuple = (), t
         errors += [f"{name}: an e-mail address ({e}), contact goes through GitHub" for e in emails(text)]
         parsed = parse(path)
         errors += [f"{name}: {p}" for p in parsed.problems]
+        if budget is not None and not parsed.redirect:
+            files = {t for t in (local(path, link) for link in parsed.eager) if t is not None and t.is_file()}
+            weight = len(text.encode("utf-8")) + sum(t.stat().st_size for t in files)
+            if weight > budget:
+                errors.append(f"{name}: {weight // 1024} KB loaded at once ({len(files)} files and the page), above the "
+                              f"budget of {budget // 1024} KB")
         if not parsed.no_referrer:
             errors.append(f'{name}: no <meta name="referrer" content="no-referrer">')
         if parsed.policy is None:
