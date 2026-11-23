@@ -1,17 +1,32 @@
-<!--
-The title is a conventional commit with a scope (feat(menu): …, fix(links): …).
--->
+<!-- Title: a conventional commit with a scope (feat(menu): …, fix(links): …). It becomes the squash subject. -->
 
-## What this changes, and why
+## 🎯 At a glance
 
-<!-- The diff says what; this says what it is for. -->
+<!-- 2 to 3 sentences for someone who has not seen the diff: what changes and what it gives. -->
 
-## How it was verified
+## 💡 Why
 
-<!-- Beyond CI: a site built with it, its pages looked at. -->
+<!-- The need behind it. Link the issue it closes (Closes #N). -->
 
-## Checklist
+## 🔧 What changes
 
-- [ ] `python3 -m unittest discover -s tests` passes
+<!-- A short list of the real changes, not a copy of the diff. -->
+-
+
+### 🖼️ Before / After
+
+<!-- Only when a page looks different. Fictional names and games only. Delete the table otherwise. -->
+
+| Before | After |
+|---|---|
+| | |
+
+## ✅ Checked
+
+<!-- What was run beyond CI, and what could not be checked. CI already runs the unit tests and the script checks, so they are not listed here. -->
+
+- [ ] A site built with the change, its pages looked at (`python3 tools/sample_site.py` or the site's own build)
 - [ ] A text added is in all 15 catalogs (`i18n/`), translated
 - [ ] A site added: `sites.json`, its mark in `assets/marks/`, `sites_<key>` in the catalogs
+
+Merge: squash
